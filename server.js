@@ -9,9 +9,16 @@ app.get("/", (req, res) => {
 });
 
 app.post("/webhook", (req, res) => {
-    console.log("Webhook recebido:", req.body);
+    console.log("Webhook Mercado Pago:", req.body);
 
     res.sendStatus(200);
+});
+
+app.get("/status", (req, res) => {
+    res.json({
+        servidor: "online",
+        mercadoPago: !!process.env.MERCADOPAGO_ACCESS_TOKEN
+    });
 });
 
 const PORT = process.env.PORT || 3000;
