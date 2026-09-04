@@ -1,10 +1,29 @@
 const express = require("express");
+const { MongoClient } = require("mongodb");
 
 const app = express();
 
 app.use(express.json());
 
 const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
+const MONGODB_URI = process.env.MONGODB_URI;
+
+let colecaoPagamentos;
+
+const clienteMongo = new MongoClient(MONGODB_URI);
+
+async function conectarBanco() {
+
+    await clienteMongo.connect();
+
+    const banco = clienteMongo.db("meuponto");
+
+    colecaoPagamentos = banco.collection("pagamentos");
+
+    console.log("Conectado ao MongoDB");
+}
+
+conectarBanco();
 
 
 // ===============================
