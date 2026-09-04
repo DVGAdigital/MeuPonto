@@ -227,6 +227,18 @@ app.post("/webhook", async (req, res) => {
 
             if (dispositivoId) {
 
+                const agora = new Date();
+                const validoAte = new Date(agora);
+
+                if (tipoPlano === "mensal") {
+
+                    validoAte.setMonth(validoAte.getMonth() + 1);
+
+                } else if (tipoPlano === "anual") {
+
+                    validoAte.setFullYear(validoAte.getFullYear() + 1);
+                }
+
                 await colecaoPagamentos.updateOne(
                     { dispositivoId: dispositivoId },
                     {
@@ -235,7 +247,8 @@ app.post("/webhook", async (req, res) => {
                             plano: tipoPlano,
                             status: "aprovado",
                             pagamentoId: pagamentoId,
-                            atualizadoEm: new Date()
+                            validoAte: validoAte,
+                            atualizadoEm: agora
                         }
                     },
                     { upsert: true }
