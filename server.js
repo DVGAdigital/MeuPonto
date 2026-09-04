@@ -119,7 +119,42 @@ app.post("/webhook", (req, res) => {
 
 
 
+app.get("/teste-pagamento", async (req, res) => {
+    try {
+        const resposta = await fetch(
+            "https://api.mercadopago.com/checkout/preferences",
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${ACCESS_TOKEN}`
+                },
+                body: JSON.stringify({
+                    items: [{
+                        title: "Meu Ponto PRO - Mensal",
+                        quantity: 1,
+                        currency_id: "BRL",
+                        unit_price: 3.49
+                    }]
+                })
+            }
+        );
 
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            return res.status(resposta.status).json(dados);
+        }
+
+        res.redirect(dados.init_point);
+
+    } catch (erro) {
+        console.error(erro);
+        res.status(500).json({
+            erro: erro.message
+        });
+    }
+});
 
 
 const PORT = process.env.PORT || 3000;
