@@ -32,8 +32,6 @@ async function conectarBanco() {
     }
 }
 
-conectarBanco();
-
 
 // ===============================
 // SERVIDOR
