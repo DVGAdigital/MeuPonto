@@ -36,7 +36,14 @@ app.post("/criar-pagamento", async (req, res) => {
 
     try {
 
-        const { tipo } = req.body;
+        const { tipo, dispositivoId } = req.body;
+
+        if (!dispositivoId) {
+
+            return res.status(400).json({
+                erro: "dispositivoId não informado"
+            });
+        }
 
         let valor;
         let titulo;
@@ -94,7 +101,7 @@ app.post("/criar-pagamento", async (req, res) => {
 
                     auto_return: "approved",
 
-                    external_reference: `meu-ponto-${tipo}`
+                    external_reference: `${dispositivoId}|${tipo}`
 
                 })
 
