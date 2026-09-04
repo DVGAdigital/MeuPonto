@@ -16,13 +16,20 @@ const clienteMongo = new MongoClient(MONGODB_URI);
 
 async function conectarBanco() {
 
-    await clienteMongo.connect();
+    try {
 
-    const banco = clienteMongo.db("meuponto");
+        await clienteMongo.connect();
 
-    colecaoPagamentos = banco.collection("pagamentos");
+        const banco = clienteMongo.db("meuponto");
 
-    console.log("Conectado ao MongoDB");
+        colecaoPagamentos = banco.collection("pagamentos");
+
+        console.log("Conectado ao MongoDB com sucesso!");
+
+    } catch (erro) {
+
+        console.error("ERRO ao conectar no MongoDB:", erro.message);
+    }
 }
 
 conectarBanco();
