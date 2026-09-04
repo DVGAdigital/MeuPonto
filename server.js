@@ -179,17 +179,107 @@ app.post("/criar-pagamento", async (req, res) => {
 // WEBHOOK MERCADO PAGO
 // ===============================
 
-app.post("/webhook", (req, res) => {
+app.post("/webhook", async (req, res) => {
 
-    console.log(
-        "Webhook Mercado Pago:",
-        req.body
-    );
+    try {
 
-    res.sendStatus(200);
+        console.log("Webhook recebido:", req.body);
+
+        const tipoNotificacao = req.query.type || req.body.type;
+
+        const pagamentoId =
+            req.query["data.id"] ||
+            (req.body.data && req.body.data.id);
+
+        if (tipoNotificacao !== "payment" || !pagamentoId) {
+
+            return res.sendStatus(200);
+        }
+
+        // Busca os detalhes reais do pagamento na API do Mercado Pago
+        const resposta = await fetch(
+            `https://api.mercadopago.com/v1/payments/${pagamentoId}`,
+            {
+                headers: {
+                    "Authorization": `Bearer ${ACCESS_TOKEN}`
+                }
+            }
+        );
+
+        const pagamento = await resposta.json();
+
+        console.log("Detalhes do pagamento:", pagamento);
+
+        if (pagamento.status === "approved") {
+
+            const referencia = pagamento.external_reference || "";
+
+            const [dispositivoId, tipoPlano] = referencia.split("|");
+
+            if (dispositivoId) {
+
+                await colecaoPagamentos.updateOne(
+                    { dispositivoId: dispositivoId },
+                    {
+                        $set: {
+                            dispositivoId: dispositivoId,
+                            plano: tipoPlano,
+                            status: "aprovado",
+                            pagamentoId: pagamentoId,
+                            atualizadoEm: new Date()
+                        }
+                    },
+                    { upsert: true }
+                );
+
+                console.log(
+                    "PRO liberado para:",
+                    dispositivoId
+                );
+            }
+        }
+
+        res.sendStatus(200);
+
+    } catch (erro) {
+
+        console.error("Erro no webhook:", erro);
+
+        res.sendStatus(200);
+        // Sempre responde 200 para o Mercado Pago não ficar reenviando
+    }
 
 });
 
+
+// ===============================
+// VERIFICAR PAGAMENTO
+// ===============================
+
+app.get("/verificar-pagamento/:dispositivoId", async (req, res) => {
+
+    try {
+
+        const { dispositivoId } = req.params;
+
+        const registro = await colecaoPagamentos.findOne({
+            dispositivoId: dispositivoId
+        });
+
+        const pro =
+            !!registro && registro.status === "aprovado";
+
+        res.json({ pro: pro });
+
+    } catch (erro) {
+
+        console.error("Erro ao verificar pagamento:", erro);
+
+        res.status(500).json({ erro: "Erro interno" });
+
+    }
+
+});
 
 // ===============================
 // INICIAR SERVIDOR
