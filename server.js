@@ -288,10 +288,20 @@ app.get("/verificar-pagamento/:dispositivoId", async (req, res) => {
             dispositivoId: dispositivoId
         });
 
-        const pro =
+        const aprovado =
             !!registro && registro.status === "aprovado";
 
-        res.json({ pro: pro });
+        const dentroDoPrazo =
+            aprovado &&
+            registro.validoAte &&
+            new Date(registro.validoAte) > new Date();
+
+        const pro = aprovado && dentroDoPrazo;
+
+        res.json({
+            pro: pro,
+            validoAte: registro ? registro.validoAte : null
+        });
 
     } catch (erro) {
 
