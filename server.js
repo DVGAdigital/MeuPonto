@@ -1,8 +1,10 @@
 const express = require("express");
+const cors = require("cors");
 const { MongoClient } = require("mongodb");
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
