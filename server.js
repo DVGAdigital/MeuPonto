@@ -319,10 +319,16 @@ app.get("/verificar-pagamento/:dispositivoId", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
+async function iniciar() {
 
-    console.log(
-        `Servidor rodando na porta ${PORT}`
-    );
+    await conectarBanco();
 
-});
+    app.listen(PORT, () => {
+
+        console.log(
+            `Servidor rodando na porta ${PORT}`
+        );
+    });
+}
+
+iniciar();
