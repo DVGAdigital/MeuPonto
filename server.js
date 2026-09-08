@@ -104,7 +104,7 @@ app.post("/criar-pagamento", async (req, res) => {
                     "Authorization": `Bearer ${ACCESS_TOKEN}`
                 },
 
-                body: JSON.stringify({
+             body: JSON.stringify({
 
                     items: [
                         {
@@ -127,7 +127,9 @@ app.post("/criar-pagamento", async (req, res) => {
 
                     auto_return: "approved",
 
-                    external_reference: `${dispositivoId}|${tipo}`
+                    external_reference: `${dispositivoId}|${tipo}`,
+
+                    notification_url: "https://meu-ponto-api-ajyu.onrender.com/webhook"
 
                 })
 
