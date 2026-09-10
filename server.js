@@ -225,7 +225,7 @@ app.post("/webhook", async (req, res) => {
 
             const [dispositivoId, tipoPlano] = referencia.split("|");
 
-            if (dispositivoId) {
+       if (dispositivoId) {
 
                 const agora = new Date();
                 const validoAte = new Date(agora);
@@ -239,6 +239,9 @@ app.post("/webhook", async (req, res) => {
                     validoAte.setFullYear(validoAte.getFullYear() + 1);
                 }
 
+                const emailPagador =
+                    (pagamento.payer && pagamento.payer.email) || null;
+
                 await colecaoPagamentos.updateOne(
                     { dispositivoId: dispositivoId },
                     {
@@ -248,6 +251,7 @@ app.post("/webhook", async (req, res) => {
                             status: "aprovado",
                             pagamentoId: pagamentoId,
                             validoAte: validoAte,
+                            emailPagador: emailPagador,
                             atualizadoEm: agora
                         }
                     },
