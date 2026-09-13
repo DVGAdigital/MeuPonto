@@ -3,200 +3,778 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Meu Ponto — Controle de jornada sem complicação</title>
+<title>Meu Ponto — controle seu horário sem complicação</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 <style>
-  :root{
-    --ink:#1C2B45;
-    --ink-soft:#3A4B6B;
-    --paper:#F7F5F0;
-    --paper-dim:#EDEAE2;
-    --amber:#D98A2B;
-    --sage:#4F7A68;
-    --line:#DAD5C9;
-  }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{
-    background:var(--paper);
-    color:var(--ink);
-    font-family:'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
-    line-height:1.55;
-  }
-  .wrap{max-width:1080px;margin:0 auto;padding:0 28px;}
-  nav{display:flex;align-items:center;justify-content:space-between;padding:26px 0;}
-  .brand{font-weight:800;font-size:1.15rem;letter-spacing:-0.01em;}
-  .brand span{color:var(--amber);}
-  nav a.cta-small{
-    background:var(--ink);color:var(--paper);padding:10px 20px;border-radius:6px;
-    text-decoration:none;font-weight:600;font-size:0.92rem;
-  }
-  .hero{display:grid;grid-template-columns:1.1fr 0.9fr;gap:48px;align-items:center;padding:56px 0 88px;}
-  .hero h1{
-    font-size:3rem;font-weight:800;letter-spacing:-0.02em;line-height:1.08;
-    max-width:11ch;
-  }
-  .hero p.lead{
-    margin-top:22px;font-size:1.15rem;color:var(--ink-soft);max-width:42ch;
-  }
-  .hero-ctas{display:flex;gap:14px;margin-top:34px;}
-  .btn-primary{
-    background:var(--amber);color:#1B1508;padding:14px 26px;border-radius:8px;
-    text-decoration:none;font-weight:700;font-size:1rem;display:inline-block;
-  }
-  .btn-ghost{
-    border:1.5px solid var(--ink);color:var(--ink);padding:14px 26px;border-radius:8px;
-    text-decoration:none;font-weight:700;font-size:1rem;display:inline-block;
-  }
-  .phone{
-    background:var(--ink);border-radius:36px;padding:14px;width:270px;margin:0 auto;
-    box-shadow:0 30px 60px -20px rgba(28,43,69,0.45);
-  }
-  .phone-screen{
-    background:var(--paper);border-radius:24px;padding:26px 20px;min-height:420px;
-  }
-  .ps-label{font-size:0.75rem;color:var(--ink-soft);font-weight:600;}
-  .ps-time{
-    font-size:2.6rem;font-weight:800;color:var(--ink);margin:6px 0 24px;letter-spacing:-0.02em;
-  }
-  .ps-row{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:13px 0;border-top:1px solid var(--line);
-  }
-  .ps-row:first-of-type{border-top:none;}
-  .ps-row .t{font-weight:600;font-size:0.92rem;}
-  .ps-row .v{font-weight:700;color:var(--sage);font-size:0.92rem;}
-  .ps-btn{
-    margin-top:26px;background:var(--sage);color:#fff;text-align:center;
-    padding:14px;border-radius:10px;font-weight:700;font-size:0.95rem;
-  }
-  .features{padding:70px 0;border-top:1px solid var(--line);}
-  .features h2{font-size:1.9rem;font-weight:800;letter-spacing:-0.01em;max-width:20ch;}
-  .feature-grid{
-    display:grid;grid-template-columns:repeat(3,1fr);gap:40px;margin-top:44px;
-  }
-  .feature h3{font-size:1.08rem;font-weight:700;margin-bottom:10px;}
-  .feature p{color:var(--ink-soft);font-size:0.96rem;}
-  .feature .num{
-    font-weight:800;font-size:0.85rem;color:var(--amber);margin-bottom:14px;display:block;
-  }
-  .how{padding:70px 0;background:var(--ink);color:var(--paper);}
-  .how .wrap{display:grid;grid-template-columns:0.85fr 1.15fr;gap:56px;align-items:start;}
-  .how h2{font-size:1.9rem;font-weight:800;max-width:14ch;letter-spacing:-0.01em;}
-  .how p{color:#B9C2D6;margin-top:16px;max-width:32ch;}
-  .steps{display:flex;flex-direction:column;gap:26px;}
-  .step{display:flex;gap:18px;align-items:flex-start;}
-  .step-dot{
-    width:34px;height:34px;border-radius:50%;background:var(--amber);color:#1B1508;
-    display:flex;align-items:center;justify-content:center;font-weight:800;flex-shrink:0;
-  }
-  .step h4{font-weight:700;margin-bottom:4px;}
-  .step p{color:#B9C2D6;margin:0;max-width:44ch;}
-  .final{padding:80px 0;text-align:center;}
-  .final h2{font-size:2.1rem;font-weight:800;letter-spacing:-0.01em;max-width:18ch;margin:0 auto;}
-  .final p{color:var(--ink-soft);margin:16px auto 32px;max-width:40ch;}
-  footer{border-top:1px solid var(--line);padding:28px 0;}
-  footer .wrap{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;}
-  footer p{color:var(--ink-soft);font-size:0.88rem;}
-  @media (max-width:820px){
-    .hero{grid-template-columns:1fr;padding-top:32px;}
-    .hero h1{font-size:2.3rem;max-width:none;}
-    .phone{margin-top:8px;}
-    .feature-grid{grid-template-columns:1fr;gap:32px;}
-    .how .wrap{grid-template-columns:1fr;gap:34px;}
-  }
+
+:root {
+    --navy: #111827;
+    --navy-soft: #1c2637;
+    --amber: #f59e0b;
+    --amber-deep: #b45309;
+    --paper: #f7f5f1;
+    --paper-line: #e7e3da;
+    --ink: #1f2328;
+    --ink-muted: #6b7280;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+    font-family: "Inter", sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    line-height: 1.55;
+}
+
+img, svg { display: block; max-width: 100%; }
+
+.envelope { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+h1, h2, h3 {
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    letter-spacing: -.01em;
+}
+
+a { color: inherit; }
+
+/* =========================
+   TOPO / NAV
+   ========================= */
+
+.topo {
+    background: var(--navy);
+    color: white;
+}
+
+.topoLinha {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 0;
+}
+
+.marca {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: "Fraunces", serif;
+    font-weight: 600;
+    font-size: 19px;
+}
+
+.marcaIcone {
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    background: var(--amber);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.topoNav {
+    display: flex;
+    gap: 28px;
+    font-size: 14px;
+    color: rgba(255,255,255,.72);
+}
+
+.topoNav a:hover { color: white; }
+
+
+/* =========================
+   HERO
+   ========================= */
+
+.hero {
+    background: var(--navy);
+    color: white;
+    padding: 64px 0 90px;
+}
+
+.heroGrade {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 56px;
+    align-items: center;
+}
+
+.heroSelo {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(245,158,11,.14);
+    border: 1px solid rgba(245,158,11,.35);
+    color: var(--amber);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 100px;
+    margin-bottom: 22px;
+}
+
+.hero h1 {
+    font-size: 44px;
+    line-height: 1.12;
+    max-width: 11ch;
+}
+
+.hero p.lead {
+    margin-top: 20px;
+    font-size: 17px;
+    color: rgba(255,255,255,.78);
+    max-width: 46ch;
+}
+
+.heroBotoes {
+    margin-top: 32px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid transparent;
+}
+
+.btnPrincipal {
+    background: var(--amber);
+    color: var(--navy);
+}
+
+.btnPrincipal:hover { background: #ffb224; }
+
+.btnFantasma {
+    background: transparent;
+    border-color: rgba(255,255,255,.3);
+    color: white;
+}
+
+.btnFantasma:hover { border-color: rgba(255,255,255,.6); }
+
+.heroNota {
+    margin-top: 16px;
+    font-size: 13px;
+    color: rgba(255,255,255,.55);
+}
+
+
+/* Ilustração do telefone */
+
+.telefoneCena {
+    position: relative;
+    display: flex;
+    justify-content: center;
+}
+
+.telefone {
+    width: 230px;
+    background: #f9fafb;
+    border-radius: 30px;
+    padding: 14px;
+    box-shadow: 0 30px 70px rgba(0,0,0,.45);
+    transform: rotate(-4deg);
+}
+
+.telefoneTela {
+    background: white;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.telefoneTopo {
+    background: var(--navy);
+    color: white;
+    padding: 18px 16px 14px;
+    text-align: center;
+}
+
+.telefoneTopo span {
+    display: block;
+    font-size: 11px;
+    opacity: .65;
+    margin-top: 4px;
+}
+
+.telefoneRelogio {
+    font-family: "Fraunces", serif;
+    font-size: 26px;
+    font-weight: 600;
+}
+
+.telefoneCorpo { padding: 16px 14px; }
+
+.telefoneLinha {
+    display: flex;
+    justify-content: space-between;
+    padding: 9px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 12px;
+    color: var(--ink-muted);
+}
+
+.telefoneLinha strong { color: var(--ink); font-size: 13px; }
+
+.telefoneBotao {
+    margin-top: 14px;
+    background: var(--navy);
+    color: white;
+    text-align: center;
+    padding: 11px;
+    border-radius: 10px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+.selinhoFlutuante {
+    position: absolute;
+    bottom: 18px;
+    left: -8px;
+    background: white;
+    color: var(--navy);
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 700;
+    box-shadow: 0 12px 30px rgba(0,0,0,.25);
+}
+
+.selinhoFlutuante span {
+    display: block;
+    font-weight: 400;
+    color: var(--ink-muted);
+    font-size: 10.5px;
+}
+
+
+/* =========================
+   COMO FUNCIONA
+   ========================= */
+
+.secao { padding: 78px 0; }
+
+.secaoCabecalho { max-width: 52ch; margin-bottom: 44px; }
+
+.secaoCabecalho h2 { font-size: 30px; }
+
+.secaoCabecalho p {
+    margin-top: 12px;
+    color: var(--ink-muted);
+    font-size: 15.5px;
+}
+
+.passos {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    border-top: 1px solid var(--paper-line);
+}
+
+.passo {
+    padding: 26px 22px 0 0;
+    border-right: 1px solid var(--paper-line);
+}
+
+.passo:last-child { border-right: none; }
+
+.passoIndice {
+    font-family: "Fraunces", serif;
+    font-size: 15px;
+    color: var(--amber-deep);
+    font-weight: 600;
+}
+
+.passo h3 {
+    font-size: 18px;
+    margin-top: 8px;
+}
+
+.passo p {
+    margin-top: 8px;
+    font-size: 14px;
+    color: var(--ink-muted);
+}
+
+
+/* =========================
+   RECURSOS (lista, não cards idênticos)
+   ========================= */
+
+.recursos { background: white; border-top: 1px solid var(--paper-line); border-bottom: 1px solid var(--paper-line); }
+
+.recursosLista { display: flex; flex-direction: column; }
+
+.recursoItem {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 28px;
+    padding: 26px 0;
+    border-top: 1px solid var(--paper-line);
+}
+
+.recursoItem:first-child { border-top: none; }
+
+.recursoItem h3 {
+    font-size: 17px;
+    border-left: 3px solid var(--amber);
+    padding-left: 14px;
+}
+
+.recursoItem p { color: var(--ink-muted); font-size: 14.5px; max-width: 60ch; }
+
+
+/* =========================
+   PLANOS
+   ========================= */
+
+.planosGrade {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 22px;
+}
+
+.planoCartao {
+    background: white;
+    border: 1px solid var(--paper-line);
+    border-radius: 16px;
+    padding: 28px;
+}
+
+.planoCartao.destacado {
+    border: 1px solid var(--amber);
+    background: linear-gradient(180deg, #fffaf0, white 60%);
+}
+
+.planoRotulo {
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: var(--ink-muted);
+}
+
+.planoCartao.destacado .planoRotulo { color: var(--amber-deep); }
+
+.planoPreco {
+    font-family: "Fraunces", serif;
+    font-size: 30px;
+    margin-top: 6px;
+}
+
+.planoPreco small {
+    font-family: "Inter", sans-serif;
+    font-size: 13px;
+    color: var(--ink-muted);
+    font-weight: 400;
+}
+
+.planoLista {
+    margin-top: 18px;
+    list-style: none;
+    font-size: 14px;
+    color: var(--ink);
+}
+
+.planoLista li {
+    padding: 7px 0;
+    border-top: 1px solid var(--paper-line);
+}
+
+.planoLista li:first-child { border-top: none; }
+
+
+/* =========================
+   INSTALAR (ajuda)
+   ========================= */
+
+.instalarCaixa {
+    background: var(--navy);
+    color: white;
+    border-radius: 20px;
+    padding: 40px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px;
+}
+
+.instalarCaixa h2 { font-size: 24px; color: white; }
+
+.instalarCaixa > div:first-child p {
+    margin-top: 12px;
+    color: rgba(255,255,255,.7);
+    font-size: 14.5px;
+    max-width: 40ch;
+}
+
+.instalarPassos { list-style: none; counter-reset: passoInstalar; }
+
+.instalarPassos li {
+    counter-increment: passoInstalar;
+    padding: 12px 0 12px 34px;
+    position: relative;
+    font-size: 14px;
+    color: rgba(255,255,255,.85);
+    border-top: 1px solid rgba(255,255,255,.12);
+}
+
+.instalarPassos li:first-child { border-top: none; }
+
+.instalarPassos li::before {
+    content: counter(passoInstalar);
+    position: absolute;
+    left: 0;
+    top: 11px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: var(--amber);
+    color: var(--navy);
+    font-size: 11px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+/* =========================
+   RODAPÉ
+   ========================= */
+
+footer {
+    padding: 40px 0 50px;
+    border-top: 1px solid var(--paper-line);
+}
+
+.rodapeLinha {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 13px;
+    color: var(--ink-muted);
+}
+
+.rodapeLinha a { color: var(--ink); font-weight: 600; text-decoration: none; }
+
+
+/* =========================
+   RESPONSIVO
+   ========================= */
+
+@media (max-width: 800px) {
+
+    .heroGrade { grid-template-columns: 1fr; }
+    .hero h1 { font-size: 34px; max-width: none; }
+    .heroSelo, .heroNota { text-align: left; }
+    .telefoneCena { margin-top: 20px; }
+
+    .passos { grid-template-columns: 1fr; }
+    .passo { border-right: none; border-top: 1px solid var(--paper-line); padding: 22px 0 0; }
+    .passo:first-child { border-top: none; }
+
+    .recursoItem { grid-template-columns: 1fr; gap: 10px; }
+
+    .planosGrade { grid-template-columns: 1fr; }
+
+    .instalarCaixa { grid-template-columns: 1fr; padding: 28px; }
+
+    .topoNav { display: none; }
+}
+
 </style>
 </head>
+
 <body>
 
-<div class="wrap">
-  <nav>
-    <div class="brand">Meu<span>Ponto</span></div>
-    <a class="cta-small" href="#baixar">Baixar app</a>
-  </nav>
+<div class="topo">
+    <div class="envelope topoLinha">
+
+        <div class="marca">
+            <span class="marcaIcone">🕐</span>
+            Meu Ponto
+        </div>
+
+        <nav class="topoNav">
+            <a href="#funciona">Como funciona</a>
+            <a href="#recursos">Recursos</a>
+            <a href="#planos">Planos</a>
+            <a href="#instalar">Instalar</a>
+        </nav>
+
+    </div>
 </div>
 
-<div class="wrap">
-  <section class="hero">
-    <div>
-      <h1>Seu ponto batido em segundos.</h1>
-      <p class="lead">Meu Ponto registra sua entrada, saída e intervalos direto no celular — sem planilha, sem esquecimento, sem complicação.</p>
-      <div class="hero-ctas">
-        <a class="btn-primary" href="#baixar">Baixar agora</a>
-        <a class="btn-ghost" href="#como-funciona">Como funciona</a>
-      </div>
-    </div>
-    <div class="phone">
-      <div class="phone-screen">
-        <span class="ps-label">Hoje</span>
-        <div class="ps-time">08:42</div>
-        <div class="ps-row"><span class="t">Entrada</span><span class="v">08:02</span></div>
-        <div class="ps-row"><span class="t">Saída almoço</span><span class="v">12:00</span></div>
-        <div class="ps-row"><span class="t">Volta almoço</span><span class="v">13:00</span></div>
-        <div class="ps-row"><span class="t">Saída</span><span class="v">—</span></div>
-        <div class="ps-btn">Bater ponto</div>
-      </div>
-    </div>
-  </section>
-</div>
+<section class="hero">
+    <div class="envelope heroGrade">
 
-<div class="wrap">
-  <section class="features">
-    <h2>Feito pra quem só quer registrar o horário e seguir o dia.</h2>
-    <div class="feature-grid">
-      <div class="feature">
-        <span class="num">01</span>
-        <h3>Registro rápido</h3>
-        <p>Bata entrada, saída e intervalos com um toque, direto na tela inicial.</p>
-      </div>
-      <div class="feature">
-        <span class="num">02</span>
-        <h3>Histórico organizado</h3>
-        <p>Veja todos os dias registrados em ordem, sem precisar caçar informação.</p>
-      </div>
-      <div class="feature">
-        <span class="num">03</span>
-        <h3>Edição fácil</h3>
-        <p>Esqueceu de bater um horário? Edite o registro do dia em poucos toques.</p>
-      </div>
-    </div>
-  </section>
-</div>
+        <div>
+            <span class="heroSelo">● App gratuito para Android</span>
 
-<section class="how" id="como-funciona">
-  <div class="wrap">
-    <div>
-      <h2>Três passos e pronto.</h2>
-      <p>Nenhuma configuração complicada. Instala, abre e usa no mesmo dia.</p>
+            <h1>Chega de fazer de cabeça a conta da hora extra.</h1>
+
+            <p class="lead">
+                O Meu Ponto registra sua entrada, almoço e saída, e calcula
+                sozinho se seu dia fechou, sobrou ou faltou — sem planilha,
+                sem papel, sem esquecimento.
+            </p>
+
+            <div class="heroBotoes">
+                <a href="#" class="btn btnPrincipal">⬇ Baixar para Android</a>
+                <a href="#funciona" class="btn btnFantasma">Ver como funciona</a>
+            </div>
+
+            <p class="heroNota">
+                Versão 1.0 · Grátis, com plano PRO opcional sem anúncios
+            </p>
+        </div>
+
+        <div class="telefoneCena">
+
+            <div class="telefone">
+                <div class="telefoneTela">
+
+                    <div class="telefoneTopo">
+                        <div class="telefoneRelogio">08:42:15</div>
+                        <span>quinta-feira, 10 de setembro</span>
+                    </div>
+
+                    <div class="telefoneCorpo">
+
+                        <div class="telefoneLinha">
+                            <span>Entrada</span>
+                            <strong>08:00</strong>
+                        </div>
+
+                        <div class="telefoneLinha">
+                            <span>Almoço</span>
+                            <strong>12:03</strong>
+                        </div>
+
+                        <div class="telefoneLinha">
+                            <span>Volta</span>
+                            <strong>--:--</strong>
+                        </div>
+
+                        <div class="telefoneBotao">VOLTAR DO ALMOÇO</div>
+
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="selinhoFlutuante">
+                +0h 12min
+                <span>saldo do dia</span>
+            </div>
+
+        </div>
+
     </div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-dot">1</div>
-        <div><h4>Instale o app</h4><p>Baixe o APK do Meu Ponto no seu celular Android.</p></div>
-      </div>
-      <div class="step">
-        <div class="step-dot">2</div>
-        <div><h4>Bata seu ponto</h4><p>Registre entrada, intervalo e saída conforme sua jornada acontece.</p></div>
-      </div>
-      <div class="step">
-        <div class="step-dot">3</div>
-        <div><h4>Acompanhe seu histórico</h4><p>Consulte ou corrija qualquer dia registrado, quando precisar.</p></div>
-      </div>
-    </div>
-  </div>
 </section>
 
-<div class="wrap">
-  <section class="final" id="baixar">
-    <h2>Pare de anotar horário em papel.</h2>
-    <p>O Meu Ponto é gratuito e leva menos de um minuto pra instalar.</p>
-    <a class="btn-primary" href="#">Baixar o Meu Ponto</a>
-  </section>
-</div>
+
+<section class="secao" id="funciona">
+    <div class="envelope">
+
+        <div class="secaoCabecalho">
+            <h2>Três passos e está rodando</h2>
+            <p>
+                Sem cadastro complicado, sem curso online. O app funciona
+                direto do seu celular, mesmo sem internet.
+            </p>
+        </div>
+
+        <div class="passos">
+
+            <div class="passo">
+                <div class="passoIndice">01</div>
+                <h3>Baixe o arquivo</h3>
+                <p>
+                    Toque em "Baixar para Android" acima. O arquivo
+                    (.apk) é salvo direto no seu celular.
+                </p>
+            </div>
+
+            <div class="passo">
+                <div class="passoIndice">02</div>
+                <h3>Instale</h3>
+                <p>
+                    Abra o arquivo baixado e confirme a instalação. Veja
+                    o passo a passo completo mais abaixo.
+                </p>
+            </div>
+
+            <div class="passo">
+                <div class="passoIndice">03</div>
+                <h3>Configure sua jornada</h3>
+                <p>
+                    Informe seus horários de entrada, almoço e saída, e
+                    comece a bater o ponto no mesmo dia.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+
+<section class="recursos" id="recursos">
+    <div class="envelope secao">
+
+        <div class="secaoCabecalho">
+            <h2>Feito pra quem já cansou de esquecer a hora</h2>
+        </div>
+
+        <div class="recursosLista">
+
+            <div class="recursoItem">
+                <h3>Cálculo automático do saldo</h3>
+                <p>
+                    Some as horas trabalhadas e compare com sua jornada
+                    configurada. O app avisa se você está devendo ou se
+                    sobrou tempo no dia.
+                </p>
+            </div>
+
+            <div class="recursoItem">
+                <h3>Horário configurável</h3>
+                <p>
+                    Cada pessoa tem uma jornada diferente. Defina entrada,
+                    almoço, volta e saída do seu jeito, a qualquer momento.
+                </p>
+            </div>
+
+            <div class="recursoItem">
+                <h3>Adicionar e corrigir dias</h3>
+                <p>
+                    Esqueceu de bater o ponto? Registre manualmente
+                    qualquer data, ou edite um dia já lançado.
+                </p>
+            </div>
+
+            <div class="recursoItem">
+                <h3>Histórico organizado por mês</h3>
+                <p>
+                    Veja rapidamente como foi cada dia, agrupado por mês,
+                    com o saldo de cada um já calculado.
+                </p>
+            </div>
+
+            <div class="recursoItem">
+                <h3>Funciona sem internet</h3>
+                <p>
+                    Bater ponto, editar registros e consultar o histórico
+                    não dependem de conexão. Seus dados ficam só no
+                    aparelho.
+                </p>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+
+<section class="secao" id="planos">
+    <div class="envelope">
+
+        <div class="secaoCabecalho">
+            <h2>Use grátis, ou tire os anúncios</h2>
+            <p>
+                O plano gratuito cobre o essencial. O PRO é para quem
+                quer o histórico completo, sem interrupções.
+            </p>
+        </div>
+
+        <div class="planosGrade">
+
+            <div class="planoCartao">
+                <div class="planoRotulo">GRATUITO</div>
+                <div class="planoPreco">R$ 0</div>
+
+                <ul class="planoLista">
+                    <li>Registro de ponto ilimitado</li>
+                    <li>Histórico dos últimos 10 registros</li>
+                    <li>Cálculo de saldo diário</li>
+                    <li>Configuração de jornada</li>
+                    <li>Com anúncios ocasionais</li>
+                </ul>
+            </div>
+
+            <div class="planoCartao destacado">
+                <div class="planoRotulo">PRO</div>
+                <div class="planoPreco">R$ 3,49 <small>/ mês</small></div>
+
+                <ul class="planoLista">
+                    <li>Tudo do plano gratuito</li>
+                    <li>Histórico completo, sem limite</li>
+                    <li>Sem anúncios</li>
+                    <li>Saldo acumulado visível</li>
+                    <li>R$ 34,99 no plano anual</li>
+                </ul>
+            </div>
+
+        </div>
+
+    </div>
+</section>
+
+
+<section class="secao" id="instalar">
+    <div class="envelope">
+
+        <div class="instalarCaixa">
+
+            <div>
+                <h2>Antes de instalar</h2>
+                <p>
+                    Como o Meu Ponto ainda não está na Play Store, o
+                    Android pede uma confirmação extra na primeira
+                    instalação. É rápido — veja o passo a passo.
+                </p>
+            </div>
+
+            <ol class="instalarPassos">
+                <li>Toque no arquivo .apk baixado</li>
+                <li>Se aparecer um aviso, toque em "Configurações"</li>
+                <li>Ative "Permitir desta fonte"</li>
+                <li>Volte e toque em "Instalar"</li>
+                <li>Pronto — abra o Meu Ponto e configure sua jornada</li>
+            </ol>
+
+        </div>
+
+    </div>
+</section>
+
 
 <footer>
-  <div class="wrap">
-    <p>Meu Ponto — controle de jornada simples.</p>
-    <p>© 2026</p>
-  </div>
+    <div class="envelope rodapeLinha">
+
+        <span>Meu Ponto — controle de ponto simples para o dia a dia.</span>
+
+        <a href="mailto:meuponto.suporte@gmail.com">meuponto.suporte@gmail.com</a>
+
+    </div>
 </footer>
 
 </body>
