@@ -61,7 +61,7 @@ app.get("/status", (req, res) => {
 
 app.get("/versao-app", (req, res) => {
   res.json({
-    versao: "1.0.0",
+    versao: "1.0.1",
     apk: "https://github.com/DVGAdigital/MeuPonto/releases/latest/download/MeuPonto.apk"
   });
 });
