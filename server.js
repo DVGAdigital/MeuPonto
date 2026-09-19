@@ -54,6 +54,22 @@ app.get("/status", (req, res) => {
 });
 
 
+
+// =========================
+// VERSÃO DO APP
+// =========================
+
+app.get("/versao-app", (req, res) => {
+  res.json({
+    versao: "1.0.0",
+    apk: "https://github.com/DVGAdigital/MeuPonto/releases/latest/download/MeuPonto.apk"
+  });
+});
+
+
+
+
+
 // ===============================
 // CRIAR PAGAMENTO
 // ===============================
