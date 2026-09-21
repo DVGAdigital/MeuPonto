@@ -11,6 +11,9 @@ const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 let colecaoPagamentos;
+let colecaoDownloads;
+let colecaoUsuarios;
+
 
 const clienteMongo = new MongoClient(MONGODB_URI);
 
