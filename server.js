@@ -27,6 +27,12 @@ async function conectarBanco() {
 
         colecaoPagamentos = banco.collection("pagamentos");
 
+
+
+colecaoDownloads = banco.collection("downloads");
+colecaoUsuarios = banco.collection("usuarios");
+
+
         console.log("Conectado ao MongoDB com sucesso!");
 
     } catch (erro) {
@@ -70,6 +76,100 @@ app.get("/versao-app", (req, res) => {
 });
 
 
+
+
+
+// ===============================
+// DOWNLOAD DO APK
+// ===============================
+
+app.get("/download", async (req, res) => {
+
+    try {
+
+        await colecaoDownloads.insertOne({
+            data: new Date(),
+            origem: req.query.origem || "site"
+        });
+
+        console.log("Download registrado");
+
+    } catch (erro) {
+
+        console.error(
+            "Erro ao registrar download:",
+            erro.message
+        );
+
+    }
+
+    res.redirect(
+        "https://github.com/DVGAdigital/MeuPonto/releases/latest/download/MeuPonto.apk"
+    );
+});
+
+
+
+
+// ===============================
+// PRIMEIRA ABERTURA DO APP
+// ===============================
+
+app.post("/registrar-abertura", async (req, res) => {
+
+    try {
+
+        const { dispositivoId } = req.body;
+
+        if (!dispositivoId) {
+
+            return res.status(400).json({
+                erro: "dispositivoId não informado"
+            });
+
+        }
+
+        const agora = new Date();
+
+        const resultado =
+            await colecaoUsuarios.updateOne(
+
+                { dispositivoId: dispositivoId },
+
+                {
+                    $set: {
+                        ultimaAbertura: agora
+                    },
+
+                    $setOnInsert: {
+                        dispositivoId: dispositivoId,
+                        primeiraAbertura: agora
+                    }
+                },
+
+                { upsert: true }
+
+            );
+
+        res.json({
+            sucesso: true,
+            novoUsuario: resultado.upsertedCount > 0
+        });
+
+    } catch (erro) {
+
+        console.error(
+            "Erro ao registrar abertura:",
+            erro
+        );
+
+        res.status(500).json({
+            erro: "Erro interno"
+        });
+
+    }
+
+});
 
 
 
