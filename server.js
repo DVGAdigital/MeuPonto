@@ -111,6 +111,258 @@ app.get("/download", async (req, res) => {
 
 
 
+
+
+
+app.get("/painel", async (req, res) => {
+    try {
+        const agora = new Date();
+
+        const inicioHoje = new Date(agora);
+        inicioHoje.setHours(0, 0, 0, 0);
+
+        const inicioMes = new Date(
+            agora.getFullYear(),
+            agora.getMonth(),
+            1
+        );
+
+        const total = await colecaoDownloads.countDocuments();
+
+        const hoje = await colecaoDownloads.countDocuments({
+            data: { $gte: inicioHoje }
+        });
+
+        const mes = await colecaoDownloads.countDocuments({
+            data: { $gte: inicioMes }
+        });
+
+        const ultimosDias = [];
+
+        for (let i = 6; i >= 0; i--) {
+            const inicio = new Date(agora);
+            inicio.setHours(0, 0, 0, 0);
+            inicio.setDate(inicio.getDate() - i);
+
+            const fim = new Date(inicio);
+            fim.setDate(fim.getDate() + 1);
+
+            const quantidade =
+                await colecaoDownloads.countDocuments({
+                    data: {
+                        $gte: inicio,
+                        $lt: fim
+                    }
+                });
+
+            ultimosDias.push({
+                data: inicio.toLocaleDateString("pt-BR", {
+                    day: "2-digit",
+                    month: "2-digit"
+                }),
+                quantidade: quantidade
+            });
+        }
+
+        let barras = "";
+
+        ultimosDias.forEach((dia) => {
+            barras += `
+                <div class="dia">
+                    <div class="barra"
+                         style="height:${Math.max(dia.quantidade * 20, 8)}px">
+                    </div>
+                    <span>${dia.data}</span>
+                    <b>${dia.quantidade}</b>
+                </div>
+            `;
+        });
+
+        res.send(`
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Meu Ponto — Downloads</title>
+
+<style>
+*{
+    box-sizing:border-box;
+}
+
+body{
+    margin:0;
+    padding:25px;
+    background:#0b1220;
+    color:#fff;
+    font-family:Arial,sans-serif;
+}
+
+.container{
+    max-width:900px;
+    margin:auto;
+}
+
+h1{
+    margin-bottom:5px;
+}
+
+.sub{
+    color:#9ca7b8;
+    margin-bottom:30px;
+}
+
+.cards{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+}
+
+.card{
+    background:#111b2d;
+    border:1px solid #243047;
+    border-radius:16px;
+    padding:22px;
+}
+
+.card span{
+    color:#9ca7b8;
+    font-size:13px;
+}
+
+.card strong{
+    display:block;
+    font-size:34px;
+    margin-top:8px;
+    color:#ffc44d;
+}
+
+.grafico{
+    margin-top:20px;
+    background:#111b2d;
+    border:1px solid #243047;
+    border-radius:16px;
+    padding:25px;
+}
+
+.grafico h2{
+    margin-top:0;
+}
+
+.barras{
+    height:220px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-around;
+    gap:12px;
+    border-bottom:1px solid #33415a;
+    padding-top:20px;
+}
+
+.dia{
+    height:100%;
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:flex-end;
+    gap:7px;
+}
+
+.barra{
+    width:100%;
+    max-width:55px;
+    min-height:8px;
+    background:#f6a800;
+    border-radius:7px 7px 0 0;
+}
+
+.dia span{
+    font-size:11px;
+    color:#9ca7b8;
+}
+
+.dia b{
+    font-size:12px;
+}
+
+.atualizar{
+    display:inline-block;
+    margin-top:20px;
+    padding:12px 18px;
+    border-radius:10px;
+    background:#f6a800;
+    color:#0b1220;
+    text-decoration:none;
+    font-weight:bold;
+}
+
+@media(max-width:650px){
+    .cards{
+        grid-template-columns:1fr;
+    }
+
+    body{
+        padding:18px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>📊 Meu Ponto</h1>
+<div class="sub">Painel de downloads do aplicativo</div>
+
+<div class="cards">
+
+<div class="card">
+<span>Total de downloads</span>
+<strong>${total}</strong>
+</div>
+
+<div class="card">
+<span>Downloads hoje</span>
+<strong>${hoje}</strong>
+</div>
+
+<div class="card">
+<span>Downloads este mês</span>
+<strong>${mes}</strong>
+</div>
+
+</div>
+
+<div class="grafico">
+
+<h2>Últimos 7 dias</h2>
+
+<div class="barras">
+${barras}
+</div>
+
+<a class="atualizar" href="/painel">
+Atualizar dados
+</a>
+
+</div>
+
+</div>
+
+</body>
+</html>
+        `);
+
+    } catch (erro) {
+        console.error("Erro no painel:", erro);
+        res.status(500).send("Erro ao carregar painel.");
+    }
+});
+
+
 // ===============================
 // PRIMEIRA ABERTURA DO APP
 // ===============================
