@@ -434,7 +434,7 @@ app.get(
             const pagamentosHoje =
                 await colecaoPagamentos.countDocuments({
 
-                    status: "aprovado",
+                    status: "approved",
 
                     atualizadoEm: {
                         $gte: hoje
@@ -446,7 +446,7 @@ app.get(
             const pagamentosMes =
                 await colecaoPagamentos.countDocuments({
 
-                    status: "aprovado",
+                    status: "approved",
 
                     atualizadoEm: {
                         $gte: mes
@@ -466,7 +466,7 @@ app.get(
                         {
                             $match: {
                                 status:
-                                    "aprovado",
+                                    "approved",
 
                                 atualizadoEm: {
                                     $gte: mes
@@ -627,7 +627,7 @@ app.get(
                         await colecaoPagamentos
                             .countDocuments({
                                 status:
-                                    "aprovado"
+                                    "approved"
                             }),
 
                     hoje:
@@ -815,7 +815,7 @@ app.get(
                                 dispositivoId,
 
                             status:
-                                "aprovado"
+                                "approved"
 
                         },
 
