@@ -422,7 +422,7 @@ app.get(
             const totalPro =
                 await colecaoPagamentos.countDocuments({
 
-                    status: "aprovado",
+                    status: "approved",
 
                     validoAte: {
                         $gt: agora
