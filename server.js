@@ -1340,4 +1340,320 @@ app.post(
             ) {
 
                 return res.sendStatus(
-                    
+                    200
+                );
+
+            }
+
+
+            const resposta =
+                await fetch(
+
+                    `https://api.mercadopago.com/v1/payments/${pagamentoId}`,
+
+                    {
+
+                        headers: {
+
+                            "Authorization":
+                                `Bearer ${ACCESS_TOKEN}`
+
+                        }
+
+                    }
+
+                );
+
+
+            const pagamento =
+                await resposta.json();
+
+
+            console.log(
+                "Detalhes do pagamento:",
+                pagamento
+            );
+
+
+            const referencia =
+                pagamento.external_reference ||
+                "";
+
+
+            const [
+                dispositivoId,
+                tipoPlano
+            ] =
+                referencia.split("|");
+
+
+            if (!dispositivoId) {
+
+                return res.sendStatus(
+                    200
+                );
+
+            }
+
+
+            const agora =
+                new Date();
+
+
+            let validoAte =
+                null;
+
+
+            if (
+                pagamento.status ===
+                "approved"
+            ) {
+
+                validoAte =
+                    new Date(
+                        agora
+                    );
+
+
+                if (
+                    tipoPlano ===
+                    "mensal"
+                ) {
+
+                    validoAte.setMonth(
+                        validoAte.getMonth() + 1
+                    );
+
+                }
+
+
+                else if (
+                    tipoPlano ===
+                    "anual"
+                ) {
+
+                    validoAte.setFullYear(
+                        validoAte.getFullYear() + 1
+                    );
+
+                }
+
+            }
+
+
+            const emailPagador =
+                (
+                    pagamento.payer &&
+                    pagamento.payer.email
+                ) || null;
+
+
+            let valor =
+                Number(
+                    pagamento.transaction_amount
+                ) || 0;
+
+
+            // =================================================
+            // SALVAR PAGAMENTO
+            // =================================================
+
+            await colecaoPagamentos.updateOne(
+
+                {
+                    pagamentoId:
+                        String(
+                            pagamentoId
+                        )
+
+                },
+
+                {
+
+                    $set: {
+
+                        dispositivoId:
+                            dispositivoId,
+
+                        plano:
+                            tipoPlano,
+
+                        status:
+                            pagamento.status,
+
+                        pagamentoId:
+                            String(
+                                pagamentoId
+                            ),
+
+                        valor:
+                            valor,
+
+                        validoAte:
+                            validoAte,
+
+                        emailPagador:
+                            emailPagador,
+
+                        atualizadoEm:
+                            agora
+
+                    }
+
+                },
+
+                {
+                    upsert: true
+                }
+
+            );
+
+
+            console.log(
+                "Pagamento registrado:",
+                pagamentoId
+            );
+
+
+            res.sendStatus(
+                200
+            );
+
+
+        } catch (erro) {
+
+            console.error(
+                "Erro no webhook:",
+                erro
+            );
+
+
+            res.sendStatus(
+                200
+            );
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// VERIFICAR PAGAMENTO / PRO
+// =========================================================
+
+app.get(
+    "/verificar-pagamento/:dispositivoId",
+    async (req, res) => {
+
+        try {
+
+            const {
+                dispositivoId
+            } = req.params;
+
+
+            const registro =
+                await colecaoPagamentos
+                    .findOne(
+
+                        {
+
+                            dispositivoId:
+                                dispositivoId,
+
+                            status:
+                                "approved"
+
+                        },
+
+                        {
+
+                            sort: {
+
+                                atualizadoEm:
+                                    -1
+
+                            }
+
+                        }
+
+                    );
+
+
+            const agora =
+                new Date();
+
+
+            const pro =
+                !!registro &&
+                !!registro.validoAte &&
+                new Date(
+                    registro.validoAte
+                ) > agora;
+
+
+            res.json({
+
+                pro:
+                    pro,
+
+                validoAte:
+                    registro
+                        ? registro.validoAte
+                        : null
+
+            });
+
+
+        } catch (erro) {
+
+            console.error(
+                "Erro ao verificar pagamento:",
+                erro
+            );
+
+
+            res
+                .status(500)
+                .json({
+
+                    erro:
+                        "Erro interno"
+
+                });
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// INICIAR SERVIDOR
+// =========================================================
+
+const PORT =
+    process.env.PORT || 3000;
+
+
+async function iniciar() {
+
+    await conectarBanco();
+
+
+    app.listen(
+        PORT,
+        () => {
+
+            console.log(
+                `Servidor rodando na porta ${PORT}`
+            );
+
+        }
+    );
+
+}
+
+
+iniciar();
