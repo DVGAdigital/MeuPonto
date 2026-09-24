@@ -1315,9 +1315,35 @@ app.post(
         try {
 
             console.log(
-                "Webhook recebido:",
+                "========================================"
+            );
+
+            console.log(
+                "WEBHOOK MERCADO PAGO RECEBIDO"
+            );
+
+            console.log(
+                "Query:",
+                req.query
+            );
+
+            console.log(
+                "Body:",
                 req.body
             );
+
+
+            // -------------------------------------------------
+            // IDENTIFICAR O ID DO PAGAMENTO
+            // -------------------------------------------------
+
+            const pagamentoId =
+                req.query["data.id"] ||
+                (
+                    req.body.data &&
+                    req.body.data.id
+                ) ||
+                req.body.id;
 
 
             const tipoNotificacao =
@@ -1325,26 +1351,41 @@ app.post(
                 req.body.type;
 
 
-            const pagamentoId =
-                req.query["data.id"] ||
-                (
-                    req.body.data &&
-                    req.body.data.id
+            console.log(
+                "Tipo:",
+                tipoNotificacao
+            );
+
+            console.log(
+                "Pagamento ID:",
+                pagamentoId
+            );
+
+
+            // Respondemos imediatamente ao Mercado Pago
+            // para evitar novas tentativas da mesma notificação.
+
+            res.sendStatus(200);
+
+
+            // -------------------------------------------------
+            // IGNORAR NOTIFICAÇÕES QUE NÃO SÃO DE PAGAMENTO
+            // -------------------------------------------------
+
+            if (!pagamentoId) {
+
+                console.log(
+                    "Webhook sem ID de pagamento."
                 );
 
-
-            if (
-                tipoNotificacao !==
-                    "payment" ||
-                !pagamentoId
-            ) {
-
-                return res.sendStatus(
-                    200
-                );
+                return;
 
             }
 
+
+            // -------------------------------------------------
+            // CONSULTAR PAGAMENTO DIRETAMENTE NO MERCADO PAGO
+            // -------------------------------------------------
 
             const resposta =
                 await fetch(
@@ -1352,6 +1393,9 @@ app.post(
                     `https://api.mercadopago.com/v1/payments/${pagamentoId}`,
 
                     {
+
+                        method:
+                            "GET",
 
                         headers: {
 
@@ -1370,35 +1414,69 @@ app.post(
 
 
             console.log(
-                "Detalhes do pagamento:",
+                "Resposta Mercado Pago:",
                 pagamento
             );
 
+
+            if (!resposta.ok) {
+
+                console.error(
+                    "Erro ao consultar pagamento:",
+                    pagamento
+                );
+
+                return;
+
+            }
+
+
+            // -------------------------------------------------
+            // EXTERNAL REFERENCE
+            // -------------------------------------------------
 
             const referencia =
                 pagamento.external_reference ||
                 "";
 
 
-            const [
-                dispositivoId,
-                tipoPlano
-            ] =
+            const partes =
                 referencia.split("|");
+
+
+            const dispositivoId =
+                partes[0];
+
+
+            const tipoPlano =
+                partes[1];
+
+
+            console.log(
+                "Dispositivo:",
+                dispositivoId
+            );
+
+            console.log(
+                "Plano:",
+                tipoPlano
+            );
 
 
             if (!dispositivoId) {
 
-                return res.sendStatus(
-                    200
+                console.error(
+                    "Pagamento sem dispositivoId."
                 );
+
+                return;
 
             }
 
 
-            const agora =
-                new Date();
-
+            // -------------------------------------------------
+            // VALIDADE DO PRO
+            // -------------------------------------------------
 
             let validoAte =
                 null;
@@ -1410,9 +1488,7 @@ app.post(
             ) {
 
                 validoAte =
-                    new Date(
-                        agora
-                    );
+                    new Date();
 
 
                 if (
@@ -1441,6 +1517,20 @@ app.post(
             }
 
 
+            // -------------------------------------------------
+            // VALOR REAL DO PAGAMENTO
+            // -------------------------------------------------
+
+            const valor =
+                Number(
+                    pagamento.transaction_amount
+                ) || 0;
+
+
+            // -------------------------------------------------
+            // EMAIL
+            // -------------------------------------------------
+
             const emailPagador =
                 (
                     pagamento.payer &&
@@ -1448,22 +1538,21 @@ app.post(
                 ) || null;
 
 
-            let valor =
-                Number(
-                    pagamento.transaction_amount
-                ) || 0;
+            // -------------------------------------------------
+            // SALVAR NO MONGODB
+            // -------------------------------------------------
 
+            const agora =
+                new Date();
 
-            // =================================================
-            // SALVAR PAGAMENTO
-            // =================================================
 
             await colecaoPagamentos.updateOne(
 
                 {
+
                     pagamentoId:
                         String(
-                            pagamentoId
+                            pagamento.id
                         )
 
                 },
@@ -1475,16 +1564,16 @@ app.post(
                         dispositivoId:
                             dispositivoId,
 
+                        pagamentoId:
+                            String(
+                                pagamento.id
+                            ),
+
                         plano:
                             tipoPlano,
 
                         status:
                             pagamento.status,
-
-                        pagamentoId:
-                            String(
-                                pagamentoId
-                            ),
 
                         valor:
                             valor,
@@ -1503,41 +1592,64 @@ app.post(
                 },
 
                 {
-                    upsert: true
+
+                    upsert:
+                        true
+
                 }
 
             );
 
 
             console.log(
-                "Pagamento registrado:",
-                pagamentoId
+                "========================================"
             );
 
+            console.log(
+                "PAGAMENTO REGISTRADO COM SUCESSO"
+            );
 
-            res.sendStatus(
-                200
+            console.log(
+                "ID:",
+                pagamento.id
+            );
+
+            console.log(
+                "Status:",
+                pagamento.status
+            );
+
+            console.log(
+                "Valor:",
+                valor
+            );
+
+            console.log(
+                "Plano:",
+                tipoPlano
+            );
+
+            console.log(
+                "Dispositivo:",
+                dispositivoId
+            );
+
+            console.log(
+                "========================================"
             );
 
 
         } catch (erro) {
 
             console.error(
-                "Erro no webhook:",
+                "ERRO NO WEBHOOK:",
                 erro
-            );
-
-
-            res.sendStatus(
-                200
             );
 
         }
 
     }
 );
-
-
 // =========================================================
 // VERIFICAR PAGAMENTO / PRO
 // =========================================================
