@@ -942,3 +942,839 @@ app.get(
 
                             valor:
                                 pagamento.valor || 0,
+
+                            emailPagador:
+                                pagamento.emailPagador ||
+                                pagamento.email ||
+                                null,
+
+                            nomePagador:
+                                pagamento.nomePagador ||
+                                null,
+
+                            formaPagamento:
+                                pagamento.formaPagamento ||
+                                null,
+
+                            tipoPagamento:
+                                pagamento.tipoPagamento ||
+                                null,
+
+                            validoAte:
+                                formatarData(
+                                    pagamento.validoAte
+                                ),
+
+                            atualizadoEm:
+                                formatarData(
+                                    pagamento.atualizadoEm
+                                )
+
+                        })
+                    )
+
+            });
+
+        } catch (erro) {
+
+            console.error(
+                "Erro ao listar pagamentos:",
+                erro
+            );
+
+
+            res
+                .status(500)
+                .json({
+
+                    erro:
+                        "Erro ao listar pagamentos"
+
+                });
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// LISTAR DOWNLOADS
+// =========================================================
+
+app.get(
+    "/downloads",
+    async (req, res) => {
+
+        try {
+
+            const limite =
+                Math.min(
+                    Number(
+                        req.query.limite
+                    ) || 100,
+                    500
+                );
+
+
+            const downloads =
+                await colecaoDownloads
+                    .find({})
+                    .sort({
+                        data:
+                            -1
+                    })
+                    .limit(limite)
+                    .toArray();
+
+
+            res.json({
+
+                sucesso: true,
+
+                total:
+                    await colecaoDownloads
+                        .countDocuments(),
+
+                downloads:
+                    downloads.map(
+                        download => ({
+
+                            data:
+                                formatarData(
+                                    download.data
+                                ),
+
+                            origem:
+                                download.origem ||
+                                "site"
+
+                        })
+                    )
+
+            });
+
+        } catch (erro) {
+
+            console.error(
+                "Erro ao listar downloads:",
+                erro
+            );
+
+
+            res
+                .status(500)
+                .json({
+
+                    erro:
+                        "Erro ao listar downloads"
+
+                });
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// CRIAR PAGAMENTO
+// =========================================================
+
+app.post(
+    "/criar-pagamento",
+    async (req, res) => {
+
+        try {
+
+            const {
+                tipo,
+                dispositivoId
+            } = req.body;
+
+
+            if (!dispositivoId) {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        erro:
+                            "dispositivoId não informado"
+
+                    });
+
+            }
+
+
+            let valor;
+            let titulo;
+
+
+            if (
+                tipo === "mensal"
+            ) {
+
+                valor = 3.49;
+
+                titulo =
+                    "Meu Ponto PRO - Mensal";
+
+            }
+
+            else if (
+                tipo === "anual"
+            ) {
+
+                valor = 34.99;
+
+                titulo =
+                    "Meu Ponto PRO - Anual";
+
+            }
+
+            else {
+
+                return res
+                    .status(400)
+                    .json({
+
+                        erro:
+                            "Plano inválido"
+
+                    });
+
+            }
+
+
+            const resposta =
+                await fetch(
+
+                    "https://api.mercadopago.com/checkout/preferences",
+
+                    {
+
+                        method:
+                            "POST",
+
+                        headers: {
+
+                            "Content-Type":
+                                "application/json",
+
+                            "Authorization":
+                                `Bearer ${ACCESS_TOKEN}`
+
+                        },
+
+                        body:
+                            JSON.stringify({
+
+                                items: [
+
+                                    {
+
+                                        title:
+                                            titulo,
+
+                                        quantity:
+                                            1,
+
+                                        currency_id:
+                                            "BRL",
+
+                                        unit_price:
+                                            valor
+
+                                    }
+
+                                ],
+
+                                payment_methods: {
+
+                                    excluded_payment_types:
+                                        []
+
+                                },
+
+                                back_urls: {
+
+                                    success:
+                                        "https://dvgadigital.github.io/MeuPonto/",
+
+                                    failure:
+                                        "https://dvgadigital.github.io/MeuPonto/",
+
+                                    pending:
+                                        "https://dvgadigital.github.io/MeuPonto/"
+
+                                },
+
+                                auto_return:
+                                    "approved",
+
+                                external_reference:
+                                    `${dispositivoId}|${tipo}`,
+
+                                notification_url:
+                                    "https://meu-ponto-api-ajyu.onrender.com/webhook"
+
+                            })
+
+                    }
+
+                );
+
+
+            const dados =
+                await resposta.json();
+
+
+            if (!resposta.ok) {
+
+                console.log(
+                    "Erro Mercado Pago:",
+                    dados
+                );
+
+
+                return res
+                    .status(
+                        resposta.status
+                    )
+                    .json({
+
+                        erro:
+                            "Erro ao criar pagamento",
+
+                        detalhes:
+                            dados
+
+                    });
+
+            }
+
+
+            res.json({
+
+                sucesso: true,
+
+                id:
+                    dados.id,
+
+                link:
+                    dados.init_point
+
+            });
+
+        } catch (erro) {
+
+            console.error(
+                "Erro interno:",
+                erro
+            );
+
+
+            res
+                .status(500)
+                .json({
+
+                    erro:
+                        "Erro interno do servidor"
+
+                });
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// WEBHOOK MERCADO PAGO
+// =========================================================
+
+app.post(
+    "/webhook",
+    async (req, res) => {
+
+        try {
+
+            console.log(
+                "========================================"
+            );
+
+            console.log(
+                "WEBHOOK MERCADO PAGO RECEBIDO"
+            );
+
+            console.log(
+                "Query:",
+                req.query
+            );
+
+            console.log(
+                "Body:",
+                req.body
+            );
+
+
+            const pagamentoId =
+                req.query["data.id"] ||
+                (
+                    req.body.data &&
+                    req.body.data.id
+                ) ||
+                req.body.id;
+
+
+            const tipoNotificacao =
+                req.query.type ||
+                req.body.type;
+
+
+            console.log(
+                "Tipo:",
+                tipoNotificacao
+            );
+
+            console.log(
+                "Pagamento ID:",
+                pagamentoId
+            );
+
+
+            res.sendStatus(200);
+
+
+            if (!pagamentoId) {
+
+                console.log(
+                    "Webhook sem ID de pagamento."
+                );
+
+                return;
+
+            }
+
+
+            const resposta =
+                await fetch(
+
+                    `https://api.mercadopago.com/v1/payments/${pagamentoId}`,
+
+                    {
+
+                        method:
+                            "GET",
+
+                        headers: {
+
+                            "Authorization":
+                                `Bearer ${ACCESS_TOKEN}`
+
+                        }
+
+                    }
+
+                );
+
+
+            const pagamento =
+                await resposta.json();
+
+
+            console.log(
+                "Resposta Mercado Pago:",
+                pagamento
+            );
+
+
+            if (!resposta.ok) {
+
+                console.error(
+                    "Erro ao consultar pagamento:",
+                    pagamento
+                );
+
+                return;
+
+            }
+
+
+            const referencia =
+                pagamento.external_reference ||
+                "";
+
+
+            const partes =
+                referencia.split("|");
+
+
+            const dispositivoId =
+                partes[0];
+
+
+            const tipoPlano =
+                partes[1];
+
+
+            console.log(
+                "Dispositivo:",
+                dispositivoId
+            );
+
+            console.log(
+                "Plano:",
+                tipoPlano
+            );
+
+
+            if (!dispositivoId) {
+
+                console.error(
+                    "Pagamento sem dispositivoId."
+                );
+
+                return;
+
+            }
+
+
+            let validoAte =
+                null;
+
+
+            if (
+                pagamento.status ===
+                "approved"
+            ) {
+
+                validoAte =
+                    new Date();
+
+
+                if (
+                    tipoPlano ===
+                    "mensal"
+                ) {
+
+                    validoAte.setMonth(
+                        validoAte.getMonth() + 1
+                    );
+
+                }
+
+                else if (
+                    tipoPlano ===
+                    "anual"
+                ) {
+
+                    validoAte.setFullYear(
+                        validoAte.getFullYear() + 1
+                    );
+
+                }
+
+            }
+
+
+            const valor =
+                Number(
+                    pagamento.transaction_amount
+                ) || 0;
+
+
+            // =================================================
+            // DADOS DO PAGADOR
+            // =================================================
+
+            const emailPagador =
+                pagamento.payer &&
+                pagamento.payer.email
+                    ? pagamento.payer.email
+                    : null;
+
+
+            const nomePagador = [
+                pagamento.payer &&
+                    pagamento.payer.first_name,
+                pagamento.payer &&
+                    pagamento.payer.last_name
+            ]
+                .filter(Boolean)
+                .join(" ") || null;
+
+
+            const formaPagamento =
+                pagamento.payment_method_id ||
+                null;
+
+
+            const tipoPagamento =
+                pagamento.payment_type_id ||
+                null;
+
+
+            // =================================================
+            // SALVAR PAGAMENTO
+            // =================================================
+
+            const agora =
+                new Date();
+
+
+            await colecaoPagamentos.updateOne(
+
+                {
+
+                    pagamentoId:
+                        String(
+                            pagamento.id
+                        )
+
+                },
+
+                {
+
+                    $set: {
+
+                        dispositivoId:
+                            dispositivoId,
+
+                        pagamentoId:
+                            String(
+                                pagamento.id
+                            ),
+
+                        plano:
+                            tipoPlano,
+
+                        status:
+                            pagamento.status,
+
+                        valor:
+                            valor,
+
+                        validoAte:
+                            validoAte,
+
+                        emailPagador:
+                            emailPagador,
+
+                        nomePagador:
+                            nomePagador,
+
+                        formaPagamento:
+                            formaPagamento,
+
+                        tipoPagamento:
+                            tipoPagamento,
+
+                        atualizadoEm:
+                            agora
+
+                    }
+
+                },
+
+                {
+
+                    upsert:
+                        true
+
+                }
+
+            );
+
+
+            console.log(
+                "========================================"
+            );
+
+            console.log(
+                "PAGAMENTO REGISTRADO COM SUCESSO"
+            );
+
+            console.log(
+                "ID:",
+                pagamento.id
+            );
+
+            console.log(
+                "Status:",
+                pagamento.status
+            );
+
+            console.log(
+                "Valor:",
+                valor
+            );
+
+            console.log(
+                "Plano:",
+                tipoPlano
+            );
+
+            console.log(
+                "Dispositivo:",
+                dispositivoId
+            );
+
+            console.log(
+                "E-mail:",
+                emailPagador
+            );
+
+            console.log(
+                "Nome:",
+                nomePagador
+            );
+
+            console.log(
+                "Forma:",
+                formaPagamento
+            );
+
+            console.log(
+                "Tipo:",
+                tipoPagamento
+            );
+
+            console.log(
+                "========================================"
+            );
+
+
+        } catch (erro) {
+
+            console.error(
+                "ERRO NO WEBHOOK:",
+                erro
+            );
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// VERIFICAR PAGAMENTO / PRO
+// =========================================================
+
+app.get(
+    "/verificar-pagamento/:dispositivoId",
+    async (req, res) => {
+
+        try {
+
+            const {
+                dispositivoId
+            } = req.params;
+
+
+            const registro =
+                await colecaoPagamentos
+                    .findOne(
+
+                        {
+
+                            dispositivoId:
+                                dispositivoId,
+
+                            status:
+                                "approved"
+
+                        },
+
+                        {
+
+                            sort: {
+
+                                atualizadoEm:
+                                    -1
+
+                            }
+
+                        }
+
+                    );
+
+
+            const agora =
+                new Date();
+
+
+            const pro =
+                !!registro &&
+                !!registro.validoAte &&
+                new Date(
+                    registro.validoAte
+                ) > agora;
+
+
+            res.json({
+
+                pro:
+                    pro,
+
+                validoAte:
+                    registro
+                        ? registro.validoAte
+                        : null
+
+            });
+
+
+        } catch (erro) {
+
+            console.error(
+                "Erro ao verificar pagamento:",
+                erro
+            );
+
+
+            res
+                .status(500)
+                .json({
+
+                    erro:
+                        "Erro interno"
+
+                });
+
+        }
+
+    }
+);
+
+
+// =========================================================
+// INICIAR SERVIDOR
+// =========================================================
+
+const PORT =
+    process.env.PORT || 3000;
+
+
+async function iniciar() {
+
+    await conectarBanco();
+
+
+    app.listen(
+        PORT,
+        () => {
+
+            console.log(
+                `Servidor rodando na porta ${PORT}`
+            );
+
+        }
+    );
+
+}
+
+
+iniciar();
