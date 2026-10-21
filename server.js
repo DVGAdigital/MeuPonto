@@ -8,6 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MONGODB_URI = process.env.MONGODB_URI;
 
 let colecaoPagamentos;
