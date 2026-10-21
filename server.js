@@ -7,6 +7,34 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
+async function enviarEmail(destinatario, assunto, mensagem) {
+    const resposta = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${RESEND_API_KEY}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            from: "D'VGA <onboarding@resend.dev>",
+            to: [destinatario],
+            subject: assunto,
+            text: mensagem
+        })
+    });
+
+    const resultado = await resposta.json();
+
+    if (!resposta.ok) {
+        console.error("Erro ao enviar e-mail:", resultado);
+        throw new Error("Não foi possível enviar o e-mail.");
+    }
+
+    return resultado;
+}
+
+
+
 const ACCESS_TOKEN = process.env.MERCADOPAGO_ACCESS_TOKEN;
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
 const MONGODB_URI = process.env.MONGODB_URI;
