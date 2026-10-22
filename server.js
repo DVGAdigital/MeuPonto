@@ -71,8 +71,8 @@ async function conectarBanco() {
         colecaoUsuarios =
             banco.collection("usuarios");
 
-      colecaoEmailsVerificados =
-    banco.collection("emailsVerificados");
+        colecaoRecuperacoesPro = banco.collection("recuperacoesPro");
+        colecaoEmailsVerificados = banco.collection("emailsVerificados");
 
 
         await colecaoUsuarios.createIndex(
@@ -291,9 +291,10 @@ app.post(
                             "dispositivoId não informado"
 
                     });
-
             }
 
+
+          
 
             const agora =
                 new Date();
@@ -1141,6 +1142,16 @@ app.post(
 
             }
 
+            const emailVerificado = await colecaoEmailsVerificados.findOne({
+                dispositivoId: dispositivoId,
+                verificado: true
+            });
+
+            if (!emailVerificado) {
+                return res.status(400).json({
+                    erro: "Confirme seu e-mail antes de assinar o Meu Ponto PRO."
+                });
+            }
 
             let valor;
             let titulo;
@@ -1526,11 +1537,14 @@ app.post(
             // DADOS DO PAGADOR
             // =================================================
 
-            const emailPagador =
-                pagamento.payer &&
-                pagamento.payer.email
-                    ? pagamento.payer.email
-                    : null;
+           const emailRegistrado = await colecaoEmailsVerificados.findOne({
+    dispositivoId: dispositivoId,
+    verificado: true
+});
+
+const emailPagador = emailRegistrado
+    ? emailRegistrado.email
+    : null;
 
 
             const nomePagador = [
@@ -2010,6 +2024,7 @@ app.post("/confirmar-recuperacao-pro", async (req, res) => {
 
         const recuperacao = await colecaoRecuperacoesPro.findOne({
             email: email,
+            finalidade: "recuperar-pro",
             usado: false,
             expiraEm: { $gt: agora }
         });
@@ -2096,6 +2111,21 @@ app.post("/confirmar-recuperacao-pro", async (req, res) => {
             }
         );
 
+
+await colecaoEmailsVerificados.updateOne(
+    { dispositivoId: dispositivoId },
+    {
+        $set: {
+            email: email,
+            verificado: true,
+            verificadoEm: agora
+        }
+    },
+    { upsert: true }
+);
+
+
+      
         return res.json({
             sucesso: true,
             pro: true,
@@ -2162,12 +2192,14 @@ app.post("/solicitar-recuperacao-pro", async (req, res) => {
             .update(codigo)
             .digest("hex");
 
-        await colecaoRecuperacoesPro.deleteMany({
-            email: email
+await colecaoRecuperacoesPro.deleteMany({
+            email: email,
+            finalidade: "recuperar-pro"
         });
 
         await colecaoRecuperacoesPro.insertOne({
             email: email,
+            finalidade: "recuperar-pro",
             codigoHash: codigoHash,
             pagamentoId: pagamento.pagamentoId,
             criadoEm: agora,
