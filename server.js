@@ -42,6 +42,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 let colecaoPagamentos;
 let colecaoDownloads;
 let colecaoUsuarios;
+let colecaoRecuperacoesPro;
 
 const clienteMongo = new MongoClient(MONGODB_URI);
 
