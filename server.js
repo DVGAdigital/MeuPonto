@@ -44,6 +44,7 @@ let colecaoPagamentos;
 let colecaoDownloads;
 let colecaoUsuarios;
 let colecaoRecuperacoesPro;
+let colecaoEmailsVerificados;
 
 const clienteMongo = new MongoClient(MONGODB_URI);
 
@@ -70,8 +71,8 @@ async function conectarBanco() {
         colecaoUsuarios =
             banco.collection("usuarios");
 
-      colecaoRecuperacoesPro =
-    banco.collection("recuperacoesPro");
+      colecaoEmailsVerificados =
+    banco.collection("emailsVerificados");
 
 
         await colecaoUsuarios.createIndex(
@@ -1789,6 +1790,193 @@ app.get(
 // =========================================================
 // INICIAR SERVIDOR
 // =========================================================
+
+
+
+
+
+// =========================================================
+// SOLICITAR VERIFICAÇÃO DE E-MAIL PARA O PRO
+// =========================================================
+
+app.post("/solicitar-verificacao-email", async (req, res) => {
+    try {
+        const email = String(req.body.email || "")
+            .trim()
+            .toLowerCase();
+
+        const dispositivoId = String(req.body.dispositivoId || "").trim();
+
+        if (
+            !email ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+            !dispositivoId
+        ) {
+            return res.status(400).json({
+                erro: "Informe um e-mail válido."
+            });
+        }
+
+        const codigo = crypto.randomInt(100000, 1000000).toString();
+        const codigoHash = crypto
+            .createHash("sha256")
+            .update(codigo)
+            .digest("hex");
+
+        const agora = new Date();
+
+        await colecaoRecuperacoesPro.deleteMany({
+            email: email,
+            finalidade: "verificar-email"
+        });
+
+        await colecaoRecuperacoesPro.insertOne({
+            email: email,
+            dispositivoId: dispositivoId,
+            finalidade: "verificar-email",
+            codigoHash: codigoHash,
+            criadoEm: agora,
+            expiraEm: new Date(agora.getTime() + 10 * 60 * 1000),
+            tentativas: 0,
+            usado: false
+        });
+
+        await enviarEmail(
+            email,
+            "Código para confirmar seu e-mail - Meu Ponto",
+            `Seu código de confirmação é: ${codigo}\n\nEle expira em 10 minutos. Se você não solicitou esse código, ignore este e-mail.`
+        );
+
+        return res.json({
+            sucesso: true,
+            mensagem: "Código enviado para seu e-mail."
+        });
+
+    } catch (erro) {
+        console.error("Erro ao solicitar verificação de e-mail:", erro);
+
+        return res.status(500).json({
+            erro: "Não foi possível enviar o código. Tente novamente."
+        });
+    }
+});
+
+
+
+
+// =========================================================
+// CONFIRMAR E-MAIL PARA O PRO
+// =========================================================
+
+app.post("/confirmar-verificacao-email", async (req, res) => {
+    try {
+        const email = String(req.body.email || "")
+            .trim()
+            .toLowerCase();
+
+        const codigo = String(req.body.codigo || "").trim();
+        const dispositivoId = String(req.body.dispositivoId || "").trim();
+
+        if (
+            !email ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+            !/^\d{6}$/.test(codigo) ||
+            !dispositivoId
+        ) {
+            return res.status(400).json({
+                erro: "Informe o e-mail, o código de 6 dígitos e o dispositivo."
+            });
+        }
+
+        const agora = new Date();
+
+        const registro = await colecaoRecuperacoesPro.findOne({
+            email: email,
+            dispositivoId: dispositivoId,
+            finalidade: "verificar-email",
+            usado: false,
+            expiraEm: { $gt: agora }
+        });
+
+        if (!registro) {
+            return res.status(400).json({
+                erro: "Código inválido ou expirado. Solicite outro."
+            });
+        }
+
+        if (registro.tentativas >= 5) {
+            await colecaoRecuperacoesPro.deleteOne({
+                _id: registro._id
+            });
+
+            return res.status(400).json({
+                erro: "Limite de tentativas atingido. Solicite outro código."
+            });
+        }
+
+        const codigoHash = crypto
+            .createHash("sha256")
+            .update(codigo)
+            .digest("hex");
+
+        if (codigoHash !== registro.codigoHash) {
+            await colecaoRecuperacoesPro.updateOne(
+                { _id: registro._id },
+                { $inc: { tentativas: 1 } }
+            );
+
+            return res.status(400).json({
+                erro: "Código incorreto."
+            });
+        }
+
+        const consumo = await colecaoRecuperacoesPro.updateOne(
+            {
+                _id: registro._id,
+                usado: false,
+                expiraEm: { $gt: agora },
+                tentativas: { $lt: 5 }
+            },
+            {
+                $set: {
+                    usado: true,
+                    usadoEm: agora
+                }
+            }
+        );
+
+        if (consumo.modifiedCount !== 1) {
+            return res.status(400).json({
+                erro: "Código já utilizado ou expirado."
+            });
+        }
+
+        await colecaoEmailsVerificados.updateOne(
+            { dispositivoId: dispositivoId },
+            {
+                $set: {
+                    email: email,
+                    verificado: true,
+                    verificadoEm: agora
+                }
+            },
+            { upsert: true }
+        );
+
+        return res.json({
+            sucesso: true,
+            mensagem: "E-mail confirmado e registrado."
+        });
+
+    } catch (erro) {
+        console.error("Erro ao confirmar e-mail:", erro);
+
+        return res.status(500).json({
+            erro: "Não foi possível confirmar o e-mail."
+        });
+    }
+});
+
 
 
 
