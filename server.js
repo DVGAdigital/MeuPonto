@@ -1421,9 +1421,9 @@ app.post(
 
 
             console.log(
-                "Resposta Mercado Pago:",
-                pagamento
-            );
+    "E-MAIL RECEBIDO DO MERCADO PAGO:",
+    pagamento.payer?.email
+);
 
 
             if (!resposta.ok) {
