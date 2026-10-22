@@ -16,7 +16,7 @@ async function enviarEmail(destinatario, assunto, mensagem) {
             "Content-Type": "application/json"
         },
         body: JSON.stringify({
-            from: "D'VGA <onboarding@resend.dev>",
+            from: "D'VGA <suporte@dvga.com.br>",
             to: [destinatario],
             subject: assunto,
             text: mensagem
