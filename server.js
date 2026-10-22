@@ -1140,27 +1140,29 @@ app.post(
             let titulo;
 
 
-            if (
-                tipo === "mensal"
-            ) {
+            
+if (
+    tipo === "mensal"
+) {
 
-                valor = 3.49;
+    valor = 4.99;
 
-                titulo =
-                    "Meu Ponto PRO - Mensal";
+    titulo =
+        "Meu Ponto PRO - Mensal";
 
-            }
+}
 
-            else if (
-                tipo === "anual"
-            ) {
+else if (
+    tipo === "anual"
+) {
 
-                valor = 34.99;
+    valor = 49.99;
 
-                titulo =
-                    "Meu Ponto PRO - Anual";
+    titulo =
+        "Meu Ponto PRO - Anual";
 
-            }
+}
+
 
             else {
 
