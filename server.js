@@ -1858,17 +1858,14 @@ app.post("/confirmar-recuperacao-pro", async (req, res) => {
             });
         }
 
-        const pagamento = await colecaoPagamentos.findOne({
-            pagamentoId: recuperacao.pagamentoId,
-            emailPagador: {
-                $regex: new RegExp(
-                    "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$",
-                    "i"
-                )
-            },
-            status: "approved",
-            validoAte: { $gt: agora }
-        });
+        const pagamento = await colecaoPagamentos.find({
+    $or: [
+        { emailPagador: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } },
+        { email: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } }
+    ],
+    status: "approved",
+    validoAte: { $gt: agora }
+}).sort({ atualizadoEm: -1 }).limit(1).next();
 
         if (!pagamento) {
             await colecaoRecuperacoesPro.deleteOne({
@@ -1946,16 +1943,24 @@ app.post("/solicitar-recuperacao-pro", async (req, res) => {
 
         const agora = new Date();
 
-        const pagamento = await colecaoPagamentos.findOne({
+        const pagamento = await colecaoPagamentos.find({
+    $or: [
+        {
             emailPagador: {
-                $regex: new RegExp(
-                    "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$",
-                    "i"
-                )
-            },
-            status: "approved",
-            validoAte: { $gt: agora }
-        });
+                $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$",
+                $options: "i"
+            }
+        },
+        {
+            email: {
+                $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$",
+                $options: "i"
+            }
+        }
+    ],
+    status: "approved",
+    validoAte: { $gt: agora }
+}).sort({ atualizadoEm: -1 }).limit(1).next();
 
         if (!pagamento) {
             return res.status(404).json({
