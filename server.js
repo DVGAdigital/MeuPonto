@@ -1792,6 +1792,142 @@ app.get(
 
 
 
+
+
+/* =========================================================
+   CONFIRMAR RECUPERAÇÃO DO PRO
+   ========================================================= */
+
+app.post("/confirmar-recuperacao-pro", async (req, res) => {
+    try {
+        const email = String(req.body.email || "")
+            .trim()
+            .toLowerCase();
+
+        const codigo = String(req.body.codigo || "").trim();
+        const dispositivoId = String(req.body.dispositivoId || "").trim();
+
+        if (
+            !email ||
+            !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ||
+            !/^\d{6}$/.test(codigo) ||
+            !dispositivoId
+        ) {
+            return res.status(400).json({
+                erro: "Informe o e-mail, o código de 6 dígitos e o dispositivo."
+            });
+        }
+
+        const agora = new Date();
+
+        const recuperacao = await colecaoRecuperacoesPro.findOne({
+            email: email,
+            usado: false,
+            expiraEm: { $gt: agora }
+        });
+
+        if (!recuperacao) {
+            return res.status(400).json({
+                erro: "Código inválido ou expirado. Solicite outro."
+            });
+        }
+
+        if (recuperacao.tentativas >= 5) {
+            await colecaoRecuperacoesPro.deleteOne({
+                _id: recuperacao._id
+            });
+
+            return res.status(400).json({
+                erro: "Limite de tentativas atingido. Solicite outro código."
+            });
+        }
+
+        const codigoHash = crypto
+            .createHash("sha256")
+            .update(codigo)
+            .digest("hex");
+
+        if (codigoHash !== recuperacao.codigoHash) {
+            await colecaoRecuperacoesPro.updateOne(
+                { _id: recuperacao._id },
+                { $inc: { tentativas: 1 } }
+            );
+
+            return res.status(400).json({
+                erro: "Código incorreto."
+            });
+        }
+
+        const pagamento = await colecaoPagamentos.findOne({
+            pagamentoId: recuperacao.pagamentoId,
+            emailPagador: {
+                $regex: new RegExp(
+                    "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$",
+                    "i"
+                )
+            },
+            status: "approved",
+            validoAte: { $gt: agora }
+        });
+
+        if (!pagamento) {
+            await colecaoRecuperacoesPro.deleteOne({
+                _id: recuperacao._id
+            });
+
+            return res.status(400).json({
+                erro: "Não encontramos um plano PRO ativo para esse e-mail."
+            });
+        }
+
+        const consumoCodigo = await colecaoRecuperacoesPro.updateOne(
+            {
+                _id: recuperacao._id,
+                usado: false,
+                expiraEm: { $gt: agora },
+                tentativas: { $lt: 5 }
+            },
+            {
+                $set: {
+                    usado: true,
+                    usadoEm: agora
+                }
+            }
+        );
+
+        if (consumoCodigo.modifiedCount !== 1) {
+            return res.status(400).json({
+                erro: "Esse código já foi utilizado ou expirou."
+            });
+        }
+
+        await colecaoPagamentos.updateOne(
+            { pagamentoId: pagamento.pagamentoId },
+            {
+                $set: {
+                    dispositivoId: dispositivoId,
+                    atualizadoEm: agora
+                }
+            }
+        );
+
+        return res.json({
+            sucesso: true,
+            pro: true,
+            validoAte: pagamento.validoAte
+        });
+
+    } catch (erro) {
+        console.error("Erro ao confirmar recuperação do PRO:", erro);
+
+        return res.status(500).json({
+            erro: "Não foi possível confirmar a recuperação. Tente novamente."
+        });
+    }
+});
+
+
+
 /* =========================================================
    SOLICITAR RECUPERAÇÃO DO PRO
    ========================================================= */
