@@ -70,6 +70,9 @@ async function conectarBanco() {
         colecaoUsuarios =
             banco.collection("usuarios");
 
+      colecaoRecuperacoesPro =
+    banco.collection("recuperacoesPro");
+
 
         await colecaoUsuarios.createIndex(
             {
