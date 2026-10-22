@@ -1790,6 +1790,88 @@ app.get(
 // INICIAR SERVIDOR
 // =========================================================
 
+
+
+/* =========================================================
+   SOLICITAR RECUPERAÇÃO DO PRO
+   ========================================================= */
+
+app.post("/solicitar-recuperacao-pro", async (req, res) => {
+    try {
+        const email = String(req.body.email || "")
+            .trim()
+            .toLowerCase();
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({
+                erro: "Informe um e-mail válido."
+            });
+        }
+
+        const agora = new Date();
+
+        const pagamento = await colecaoPagamentos.findOne({
+            emailPagador: {
+                $regex: new RegExp(
+                    "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$",
+                    "i"
+                )
+            },
+            status: "approved",
+            validoAte: { $gt: agora }
+        });
+
+        if (!pagamento) {
+            return res.status(404).json({
+                erro: "Não encontramos um plano PRO ativo para esse e-mail."
+            });
+        }
+
+        const codigo = crypto.randomInt(100000, 1000000).toString();
+        const codigoHash = crypto
+            .createHash("sha256")
+            .update(codigo)
+            .digest("hex");
+
+        await colecaoRecuperacoesPro.deleteMany({
+            email: email
+        });
+
+        await colecaoRecuperacoesPro.insertOne({
+            email: email,
+            codigoHash: codigoHash,
+            pagamentoId: pagamento.pagamentoId,
+            criadoEm: agora,
+            expiraEm: new Date(agora.getTime() + 10 * 60 * 1000),
+            tentativas: 0,
+            usado: false
+        });
+
+        await enviarEmail(
+            email,
+            "Código para recuperar seu Meu Ponto PRO",
+            `Seu código de recuperação é: ${codigo}\n\nEle expira em 10 minutos. Se você não solicitou essa recuperação, ignore este e-mail.`
+        );
+
+        return res.json({
+            sucesso: true,
+            mensagem: "Código enviado para o e-mail da compra."
+        });
+
+    } catch (erro) {
+        console.error("Erro ao solicitar recuperação do PRO:", erro);
+
+        return res.status(500).json({
+            erro: "Não foi possível enviar o código agora. Tente novamente."
+        });
+    }
+});
+
+
+
+
+
+
 const PORT =
     process.env.PORT || 3000;
 
