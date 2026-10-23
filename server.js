@@ -2101,9 +2101,34 @@ app.post("/confirmar-recuperacao-pro", async (req, res) => {
             });
         }
 
+
+
+await colecaoPagamentos.updateMany(
+    {
+        dispositivoId: { $ne: dispositivoId },
+        $or: [
+            { emailPagador: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } },
+            { email: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } }
+        ],
+        status: "approved",
+        validoAte: { $gt: agora }
+    },
+    {
+        $set: {
+            dispositivoId: null,
+            atualizadoEm: agora
+        }
+    }
+);
+      
+      
         await colecaoPagamentos.updateOne(
             { pagamentoId: pagamento.pagamentoId },
             {
+
+
+
+              
                 $set: {
                     dispositivoId: dispositivoId,
                     atualizadoEm: agora
