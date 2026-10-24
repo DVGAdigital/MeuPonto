@@ -1809,49 +1809,30 @@ app.get(
 
 
 
-/* =========================================================
-   CONSULTAR SE O E-MAIL POSSUI PRO ATIVO
-   ========================================================= */
-
+// =========================================================
+// VERIFICAR SE UM E-MAIL POSSUI PLANO PRO ATIVO
+// =========================================================
 app.post("/consultar-plano-email", async (req, res) => {
     try {
-        const email = String(req.body.email || "")
-            .trim()
-            .toLowerCase();
-
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-            return res.status(400).json({
-                erro: "Informe um e-mail válido."
-            });
+        const email = String(req.body.email || "").trim().toLowerCase();
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({ erro: "Informe um e-mail válido." });
         }
-
         const agora = new Date();
-
-        const pagamento = await colecaoPagamentos.findOne({
+        const pagamento = await colecaoPagamentos.find({
             $or: [
                 { emailPagador: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } },
                 { email: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } }
             ],
             status: "approved",
             validoAte: { $gt: agora }
-        });
-
-        return res.json({
-            sucesso: true,
-            planoAtivo: !!pagamento
-        });
-
+        }).sort({ atualizadoEm: -1 }).limit(1).next();
+        return res.json({ planoAtivo: Boolean(pagamento), validoAte: pagamento ? pagamento.validoAte : null });
     } catch (erro) {
-        console.error("Erro ao consultar plano pelo e-mail:", erro);
-
-        return res.status(500).json({
-            erro: "Não foi possível consultar o plano agora."
-        });
+        console.error("Erro ao verificar plano por e-mail:", erro);
+        return res.status(500).json({ erro: "Não foi possível verificar o plano agora." });
     }
 });
-
-
-
 
 
 // =========================================================
@@ -2146,34 +2127,9 @@ app.post("/confirmar-recuperacao-pro", async (req, res) => {
             });
         }
 
-
-
-await colecaoPagamentos.updateMany(
-    {
-        dispositivoId: { $ne: dispositivoId },
-        $or: [
-            { emailPagador: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } },
-            { email: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } }
-        ],
-        status: "approved",
-        validoAte: { $gt: agora }
-    },
-    {
-        $set: {
-            dispositivoId: null,
-            atualizadoEm: agora
-        }
-    }
-);
-      
-      
         await colecaoPagamentos.updateOne(
             { pagamentoId: pagamento.pagamentoId },
             {
-
-
-
-              
                 $set: {
                     dispositivoId: dispositivoId,
                     atualizadoEm: agora
