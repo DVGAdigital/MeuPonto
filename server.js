@@ -1809,6 +1809,51 @@ app.get(
 
 
 
+/* =========================================================
+   CONSULTAR SE O E-MAIL POSSUI PRO ATIVO
+   ========================================================= */
+
+app.post("/consultar-plano-email", async (req, res) => {
+    try {
+        const email = String(req.body.email || "")
+            .trim()
+            .toLowerCase();
+
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            return res.status(400).json({
+                erro: "Informe um e-mail válido."
+            });
+        }
+
+        const agora = new Date();
+
+        const pagamento = await colecaoPagamentos.findOne({
+            $or: [
+                { emailPagador: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } },
+                { email: { $regex: "^" + email.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "$", $options: "i" } }
+            ],
+            status: "approved",
+            validoAte: { $gt: agora }
+        });
+
+        return res.json({
+            sucesso: true,
+            planoAtivo: !!pagamento
+        });
+
+    } catch (erro) {
+        console.error("Erro ao consultar plano pelo e-mail:", erro);
+
+        return res.status(500).json({
+            erro: "Não foi possível consultar o plano agora."
+        });
+    }
+});
+
+
+
+
+
 // =========================================================
 // SOLICITAR VERIFICAÇÃO DE E-MAIL PARA O PRO
 // =========================================================
