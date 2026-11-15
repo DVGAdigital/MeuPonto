@@ -220,7 +220,7 @@ app.get("/versao-app", (req, res) => {
         versao: "1.0.1",
 
         apk:
-            "https://github.com/DVGAdigital/MeuPonto/releases/latest/download/MeuPonto.apk"
+            "https://play.google.com/store/apps/details?id=com.dvga.app.meuponto"
 
     });
 
@@ -2251,6 +2251,338 @@ await colecaoRecuperacoesPro.deleteMany({
         return res.status(500).json({
             erro: "Não foi possível enviar o código agora. Tente novamente."
         });
+    }
+});
+
+
+
+
+
+// =========================================================
+// PAGAMENTOS DENTRO DO APP (PIX E CARTÃO)
+//
+// Cole este bloco no server.js, logo ANTES da linha:
+//     const PORT = process.env.PORT || 3000;
+//
+// Também faça isto no Render (Environment):
+//     MERCADOPAGO_PUBLIC_KEY = a Public Key de PRODUÇÃO (começa com APP_USR-)
+//
+// Não precisa instalar nada novo.
+// =========================================================
+
+const PLANOS_PRO = {
+    mensal: { valor: 4.99, titulo: "Meu Ponto PRO - Mensal" },
+    anual: { valor: 49.99, titulo: "Meu Ponto PRO - Anual" }
+};
+
+const PIX_VALIDADE_MINUTOS = 30;
+
+const URL_WEBHOOK = "https://meu-ponto-api-ajyu.onrender.com/webhook";
+
+const MENSAGENS_CARTAO = {
+    cc_rejected_insufficient_amount: "Saldo ou limite insuficiente. Tente outro cartão ou use o Pix.",
+    cc_rejected_bad_filled_card_number: "Número do cartão incorreto. Confira e tente de novo.",
+    cc_rejected_bad_filled_date: "Data de validade incorreta. Confira e tente de novo.",
+    cc_rejected_bad_filled_security_code: "Código de segurança incorreto. Confira e tente de novo.",
+    cc_rejected_bad_filled_other: "Confira os dados do cartão e tente de novo.",
+    cc_rejected_call_for_authorize: "Seu banco pediu autorização. Fale com o banco ou use o Pix.",
+    cc_rejected_card_disabled: "Cartão desativado. Fale com o banco ou use outro cartão.",
+    cc_rejected_duplicated_payment: "Você já fez um pagamento igual a esse. Aguarde a confirmação.",
+    cc_rejected_high_risk: "Pagamento recusado por segurança. Use o Pix ou outro cartão.",
+    cc_rejected_max_attempts: "Muitas tentativas. Use outro cartão ou o Pix."
+};
+
+const MENSAGEM_CARTAO_PADRAO = "Pagamento recusado. Tente outro cartão ou use o Pix.";
+
+
+// O Mercado Pago pede a validade do Pix com o fuso do Brasil (-03:00).
+function dataExpiracaoMercadoPago(minutos) {
+    const brasilia = new Date(
+        Date.now() + minutos * 60 * 1000 - 3 * 60 * 60 * 1000
+    );
+
+    return brasilia.toISOString().replace("Z", "-03:00");
+}
+
+
+async function emailVerificadoDoAparelho(dispositivoId) {
+    const registro = await colecaoEmailsVerificados.findOne({
+        dispositivoId: dispositivoId,
+        verificado: true
+    });
+
+    return registro && registro.email ? registro.email : null;
+}
+
+
+// Grava o pagamento aprovado e libera o PRO. Se o webhook já gravou, não faz nada.
+async function registrarPagamentoAprovado(pagamento, dispositivoId, tipoPlano) {
+    const jaRegistrado = await colecaoPagamentos.findOne({
+        pagamentoId: String(pagamento.id),
+        status: "approved"
+    });
+
+    if (jaRegistrado) return;
+
+    const agora = new Date();
+    const validoAte = new Date(agora);
+
+    if (tipoPlano === "anual") {
+        validoAte.setFullYear(validoAte.getFullYear() + 1);
+    } else {
+        validoAte.setMonth(validoAte.getMonth() + 1);
+    }
+
+    await colecaoPagamentos.updateOne(
+        { pagamentoId: String(pagamento.id) },
+        {
+            $set: {
+                dispositivoId: dispositivoId,
+                pagamentoId: String(pagamento.id),
+                plano: tipoPlano,
+                status: "approved",
+                valor: Number(pagamento.transaction_amount) || 0,
+                validoAte: validoAte,
+                emailPagador: await emailVerificadoDoAparelho(dispositivoId),
+                nomePagador: null,
+                formaPagamento: pagamento.payment_method_id || null,
+                tipoPagamento: pagamento.payment_type_id || null,
+                atualizadoEm: agora
+            }
+        },
+        { upsert: true }
+    );
+}
+
+
+// ---------------------------------------------------------
+// CONFIGURAÇÃO PÚBLICA (Public Key e valores dos planos)
+// ---------------------------------------------------------
+
+app.get("/config-pagamento", (req, res) => {
+    res.json({
+        publicKey: process.env.MERCADOPAGO_PUBLIC_KEY || null,
+        planos: {
+            mensal: PLANOS_PRO.mensal.valor,
+            anual: PLANOS_PRO.anual.valor
+        }
+    });
+});
+
+
+// ---------------------------------------------------------
+// CRIAR PIX
+// ---------------------------------------------------------
+
+app.post("/criar-pix", async (req, res) => {
+    try {
+        const tipo = String(req.body.tipo || "");
+        const dispositivoId = String(req.body.dispositivoId || "").trim();
+        const plano = PLANOS_PRO[tipo];
+
+        if (!dispositivoId) {
+            return res.status(400).json({ erro: "dispositivoId não informado" });
+        }
+
+        if (!plano) {
+            return res.status(400).json({ erro: "Plano inválido" });
+        }
+
+        const email = await emailVerificadoDoAparelho(dispositivoId);
+
+        if (!email) {
+            return res.status(400).json({
+                erro: "Confirme seu e-mail antes de assinar o Meu Ponto PRO."
+            });
+        }
+
+        const resposta = await fetch("https://api.mercadopago.com/v1/payments", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${ACCESS_TOKEN}`,
+                "X-Idempotency-Key": crypto.randomUUID()
+            },
+            body: JSON.stringify({
+                transaction_amount: plano.valor,
+                description: plano.titulo,
+                payment_method_id: "pix",
+                payer: { email: email },
+                external_reference: `${dispositivoId}|${tipo}`,
+                notification_url: URL_WEBHOOK,
+                date_of_expiration: dataExpiracaoMercadoPago(PIX_VALIDADE_MINUTOS)
+            })
+        });
+
+        const dados = await resposta.json();
+
+        const pix =
+            dados.point_of_interaction &&
+            dados.point_of_interaction.transaction_data;
+
+        if (!resposta.ok || !pix || !pix.qr_code) {
+            console.error("Erro ao criar Pix:", resposta.status, dados);
+
+            return res.status(502).json({
+                erro: "Não foi possível gerar o Pix agora. Tente novamente."
+            });
+        }
+
+        return res.json({
+            sucesso: true,
+            pagamentoId: String(dados.id),
+            qrCode: pix.qr_code,
+            qrCodeBase64: pix.qr_code_base64,
+            valor: plano.valor
+        });
+
+    } catch (erro) {
+        console.error("Erro interno ao criar Pix:", erro);
+
+        return res.status(500).json({ erro: "Erro interno do servidor" });
+    }
+});
+
+
+// ---------------------------------------------------------
+// PAGAR COM CARTÃO
+// O app manda só o token do cartão (o número nunca passa por aqui).
+// O valor vem sempre do servidor, nunca do app.
+// ---------------------------------------------------------
+
+app.post("/pagar-cartao", async (req, res) => {
+    try {
+        const tipo = String(req.body.tipo || "");
+        const dispositivoId = String(req.body.dispositivoId || "").trim();
+        const formData = req.body.formData || {};
+        const plano = PLANOS_PRO[tipo];
+
+        if (!dispositivoId) {
+            return res.status(400).json({ erro: "dispositivoId não informado" });
+        }
+
+        if (!plano) {
+            return res.status(400).json({ erro: "Plano inválido" });
+        }
+
+        if (!formData.token || !formData.payment_method_id) {
+            return res.status(400).json({ erro: "Dados do cartão incompletos." });
+        }
+
+        const email = await emailVerificadoDoAparelho(dispositivoId);
+
+        if (!email) {
+            return res.status(400).json({
+                erro: "Confirme seu e-mail antes de assinar o Meu Ponto PRO."
+            });
+        }
+
+        const corpo = {
+            transaction_amount: plano.valor,
+            token: formData.token,
+            description: plano.titulo,
+            installments: 1,
+            payment_method_id: formData.payment_method_id,
+            payer: {
+                email: email,
+                identification: formData.payer && formData.payer.identification
+            },
+            external_reference: `${dispositivoId}|${tipo}`,
+            notification_url: URL_WEBHOOK
+        };
+
+        if (formData.issuer_id) {
+            corpo.issuer_id = formData.issuer_id;
+        }
+
+        const resposta = await fetch("https://api.mercadopago.com/v1/payments", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${ACCESS_TOKEN}`,
+                "X-Idempotency-Key": crypto.randomUUID()
+            },
+            body: JSON.stringify(corpo)
+        });
+
+        const dados = await resposta.json();
+
+        if (!resposta.ok) {
+            console.error(
+                "Erro ao cobrar cartão:",
+                resposta.status,
+                dados.message || dados.error || "",
+                dados.cause ? JSON.stringify(dados.cause) : ""
+            );
+
+            return res.status(502).json({
+                erro: "Não foi possível processar o cartão agora. Tente novamente ou use o Pix."
+            });
+        }
+
+        if (dados.status === "approved") {
+            await registrarPagamentoAprovado(dados, dispositivoId, tipo);
+        }
+
+        return res.json({
+            status: dados.status,
+            pagamentoId: String(dados.id),
+            mensagem: dados.status === "rejected"
+                ? (MENSAGENS_CARTAO[dados.status_detail] || MENSAGEM_CARTAO_PADRAO)
+                : null
+        });
+
+    } catch (erro) {
+        console.error("Erro interno ao pagar com cartão:", erro);
+
+        return res.status(500).json({ erro: "Erro interno do servidor" });
+    }
+});
+
+
+// ---------------------------------------------------------
+// STATUS DE UM PAGAMENTO (Pix ou cartão em análise)
+// O app consulta a cada poucos segundos. Se já foi aprovado e o
+// webhook ainda não gravou, grava aqui também.
+// ---------------------------------------------------------
+
+app.get("/status-pagamento/:pagamentoId", async (req, res) => {
+    try {
+        const pagamentoId = String(req.params.pagamentoId || "").replace(/\D/g, "");
+        const dispositivoId = String(req.query.dispositivoId || "").trim();
+
+        if (!pagamentoId || !dispositivoId) {
+            return res.status(400).json({ erro: "Dados incompletos" });
+        }
+
+        const resposta = await fetch(
+            `https://api.mercadopago.com/v1/payments/${pagamentoId}`,
+            { headers: { "Authorization": `Bearer ${ACCESS_TOKEN}` } }
+        );
+
+        const pagamento = await resposta.json();
+
+        if (!resposta.ok) {
+            return res.status(404).json({ erro: "Pagamento não encontrado" });
+        }
+
+        const partes = String(pagamento.external_reference || "").split("|");
+
+        // só o aparelho que criou o pagamento pode consultá-lo
+        if (partes[0] !== dispositivoId) {
+            return res.status(403).json({ erro: "Pagamento de outro aparelho" });
+        }
+
+        if (pagamento.status === "approved") {
+            await registrarPagamentoAprovado(pagamento, dispositivoId, partes[1]);
+        }
+
+        return res.json({ status: pagamento.status });
+
+    } catch (erro) {
+        console.error("Erro ao consultar pagamento:", erro);
+
+        return res.status(500).json({ erro: "Erro interno" });
     }
 });
 
