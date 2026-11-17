@@ -1,3 +1,4 @@
+
 const express = require("express");
 const cors = require("cors");
 const { MongoClient } = require("mongodb");
@@ -2585,6 +2586,115 @@ app.get("/status-pagamento/:pagamentoId", async (req, res) => {
         return res.status(500).json({ erro: "Erro interno" });
     }
 });
+
+
+
+// =========================================================
+// ROTAS DO NOVO PAINEL SIMPLIFICADO
+// Cole este bloco no server.js ANTES de: const PORT = process.env.PORT || 3000;
+// =========================================================
+
+function inicioDiaBrasil(data = new Date()) {
+    const partes = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit'
+    }).formatToParts(data);
+    const p = Object.fromEntries(partes.map(x => [x.type, x.value]));
+    // Meia-noite de Brasília convertida para UTC (offset atual -03:00).
+    return new Date(Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), 3, 0, 0));
+}
+
+function periodoMesBrasil(ano, mes) {
+    const inicio = new Date(Date.UTC(ano, mes - 1, 1, 3, 0, 0));
+    const fim = new Date(Date.UTC(ano, mes, 1, 3, 0, 0));
+    return { inicio, fim };
+}
+
+app.get('/painel/desempenho', async (req, res) => {
+    try {
+        const inicio = inicioDiaBrasil();
+        const fim = new Date(inicio.getTime() + 24 * 60 * 60 * 1000);
+        const [downloadsHoje, atividadeHoje, comprasHoje] = await Promise.all([
+            colecaoDownloads.countDocuments({ data: { $gte: inicio, $lt: fim } }),
+            colecaoUsuarios.countDocuments({ ultimaAbertura: { $gte: inicio, $lt: fim } }),
+            colecaoPagamentos.countDocuments({ status: 'approved', atualizadoEm: { $gte: inicio, $lt: fim } })
+        ]);
+        return res.json({ sucesso: true, data: new Intl.DateTimeFormat('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'full' }).format(new Date()), downloadsHoje, atividadeHoje, comprasHoje });
+    } catch (erro) {
+        console.error('Erro no desempenho diário do painel:', erro);
+        return res.status(500).json({ erro: 'Não foi possível carregar o desempenho diário.' });
+    }
+});
+
+app.get('/painel/downloads', async (req, res) => {
+    try {
+        const agora = new Date();
+        const ano = Math.max(2000, Math.min(2100, Number(req.query.ano) || Number(new Intl.DateTimeFormat('en', { timeZone: 'America/Sao_Paulo', year: 'numeric' }).format(agora))));
+        const mes = Math.max(1, Math.min(12, Number(req.query.mes) || Number(new Intl.DateTimeFormat('en', { timeZone: 'America/Sao_Paulo', month: 'numeric' }).format(agora))));
+        const { inicio, fim } = periodoMesBrasil(ano, mes);
+        const [totalGeral, agrupado] = await Promise.all([
+            colecaoDownloads.countDocuments(),
+            colecaoDownloads.aggregate([
+                { $match: { data: { $gte: inicio, $lt: fim } } },
+                { $group: { _id: { $dateToString: { format: '%Y-%m-%d', date: '$data', timezone: 'America/Sao_Paulo' } }, quantidade: { $sum: 1 } } }
+            ]).toArray()
+        ]);
+        const porDia = Object.fromEntries(agrupado.map(x => [x._id, x.quantidade]));
+        const totalMes = Object.values(porDia).reduce((a, b) => a + b, 0);
+        return res.json({ sucesso: true, totalGeral, totalMes, ano, mes, porDia });
+    } catch (erro) {
+        console.error('Erro no calendário de downloads:', erro);
+        return res.status(500).json({ erro: 'Não foi possível carregar os downloads.' });
+    }
+});
+
+app.get('/painel/planos-pro', async (req, res) => {
+    try {
+        const agora = new Date();
+        const ano = Math.max(2000, Math.min(2100, Number(req.query.ano) || Number(new Intl.DateTimeFormat('en', { timeZone: 'America/Sao_Paulo', year: 'numeric' }).format(agora))));
+        const mes = Math.max(1, Math.min(12, Number(req.query.mes) || Number(new Intl.DateTimeFormat('en', { timeZone: 'America/Sao_Paulo', month: 'numeric' }).format(agora))));
+        const { inicio, fim } = periodoMesBrasil(ano, mes);
+        const [todos, ativosDispositivos] = await Promise.all([
+            colecaoPagamentos.find({}).sort({ atualizadoEm: -1 }).limit(5000).toArray(),
+            colecaoPagamentos.distinct('dispositivoId', { status: 'approved', validoAte: { $gt: agora } })
+        ]);
+        const aprovados = todos.filter(p => p.status === 'approved');
+        const porDia = {};
+        for (const p of aprovados) {
+            if (!p.atualizadoEm) continue;
+            const data = new Date(p.atualizadoEm);
+            if (data >= inicio && data < fim) {
+                const chave = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit', day: '2-digit' }).format(data);
+                porDia[chave] = (porDia[chave] || 0) + 1;
+            }
+        }
+        const pagamentos = todos.map(p => ({
+            dispositivoId: p.dispositivoId || null,
+            pagamentoId: p.pagamentoId || null,
+            plano: p.plano || null,
+            status: p.status || null,
+            valor: Number(p.valor) || 0,
+            emailPagador: p.emailPagador || p.email || null,
+            nomePagador: p.nomePagador || null,
+            formaPagamento: p.formaPagamento || null,
+            tipoPagamento: p.tipoPagamento || null,
+            validoAte: p.validoAte || null,
+            atualizadoEm: p.atualizadoEm || null
+        }));
+        return res.json({
+            sucesso: true,
+            comprasAprovadas: aprovados.length,
+            mensais: aprovados.filter(p => p.plano === 'mensal').length,
+            anuais: aprovados.filter(p => p.plano === 'anual').length,
+            ativosAgora: ativosDispositivos.filter(Boolean).length,
+            porDia,
+            pagamentos
+        });
+    } catch (erro) {
+        console.error('Erro no painel PRO:', erro);
+        return res.status(500).json({ erro: 'Não foi possível carregar os planos PRO.' });
+    }
+});
+
 
 
 
